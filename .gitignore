@@ -1,0 +1,76 @@
+# Build output.
+#
+# Binary names are listed explicitly as well as bin/, so a bare `git add .`
+# after a `go build ./cmd/...` at the root does not commit them.
+bin/
+/build/
+/crawl
+/mapview
+/omvault
+/dist
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Coverage and profiling.
+coverage.out
+coverage.html
+*.prof
+covdata/
+
+# Local toolchain scratch. floor.local carries container-absolute replace
+# paths and must never ship; go.work overrides the module graph.
+scripts/floor.local
+scripts/.floor-backup/
+go.work
+go.work.sum
+# Go's vendor directory, at the module root only. Unanchored, this also hid
+# internal/mapweb/assets/vendor (cytoscape, dagre), which go:embed needs:
+# a clone without them fails to compile mapweb, and with it the Qt archive.
+/vendor/
+
+# Run artifacts. Crawl maps and saved runs carry real device names when they
+# come off a real network, which is exactly what must not land in the repo.
+map.json
+*-map.json
+*.jsonl
+events.json
+*.graphml
+maps/
+runs/
+
+# Credentials. Never committed under any circumstances: the vault is
+# encrypted but the bindings file names devices, and known_hosts names hosts.
+vault.json
+*.vault.json
+*.bindings.json
+known_hosts
+*.pem
+*.key
+id_rsa*
+id_ed25519*
+
+# Editor and OS noise.
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+CMakeLists.txt.user*
+*.swp
+*~
+
+# Out-of-tree build directories. /build/ above is anchored and does NOT match
+# build-win, which is what scripts/bundle-windows.bat defaults to -- a
+# `git add .` after a Windows bundle would otherwise commit an entire Qt
+# deployment, MSVC runtime DLLs and all.
+/build-*/
+/cmake-build-*/
+
+# Toolchain and generator scratch.
+aqtinstall.log
+__pycache__/
+*.pyc

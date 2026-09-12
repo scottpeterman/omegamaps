@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<!--
+  internal/mapweb/assets/index.html
+
+  The page carries no data. Everything it shows arrives from /api/map, which
+  needs the per-run token the app put in this URL, so opening this address
+  without that token gets an empty viewer and nothing else.
+-->
+<!--
+  data-theme is read by viewer.js when it builds the Cytoscape stylesheet.
+  Without it the viewer picks its light palette — black labels on white chips —
+  and paints them onto this dark page.
+-->
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>Map</title>
+<script>
+/* Theme from the host. The Qt viewer passes the application's palette as
+   ?theme=<json> so the page matches the window around it; a browser gets
+   none and keeps the dark defaults below. It runs here, before the body
+   exists, so the first paint is already in the right colours. The URL is
+   rewritten by app.js, so the theme is kept for a reload the same way the
+   token is. Only hex colours on custom properties are applied: this arrives
+   in a URL, and anything else is not a palette. */
+(function () {
+  var KEY = 'omegamaps-map-theme';
+  var HEX = /^#[0-9a-fA-F]{3,8}$/;
+  function apply(theme) {
+    if (!theme || typeof theme !== 'object') return false;
+    var root = document.documentElement;
+    var vars = theme.vars || {};
+    Object.keys(vars).forEach(function (k) {
+      if (/^--[a-z0-9-]+$/.test(k) && HEX.test(vars[k])) root.style.setProperty(k, vars[k]);
+    });
+    var cy = {};
+    Object.keys(theme.cy || {}).forEach(function (k) {
+      if (HEX.test(theme.cy[k])) cy[k] = theme.cy[k];
+    });
+    root.dataset.theme = theme.dark === false ? 'light' : 'dark';
+    window.omegamapsTheme = { dark: theme.dark !== false, cy: cy };
+    return true;
+  }
+  window.omegamapsApplyTheme = apply;
+
+  var raw = new URLSearchParams(window.location.search).get('theme');
+  try {
+    if (raw) sessionStorage.setItem(KEY, raw);
+    else raw = sessionStorage.getItem(KEY);
+  } catch (e) { /* private mode */ }
+  if (raw) {
+    try { apply(JSON.parse(raw)); } catch (e) { /* not a theme; keep the defaults */ }
+  }
+})();
+</script>
+<style>
+  :root {
+    --bg:        #14171c;
+    --panel:     #1b1f26;
+    --panel-2:   #21262f;
+    --line:      #2c333d;
+    --fg:        #d8dee9;
+    --fg-dim:    #8b95a5;
+    --accent:    #4c9be8;
+    --green:     #7cc47f;
+    --red:       #d9707a;
+    --amber:     #d6a75c;
+    --on-accent: #0d1117;
+    --mono:      ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0; height: 100%;
+    background: var(--bg); color: var(--fg);
+    font: 13px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+
+  #app { display: flex; flex-direction: column; height: 100%; }
+
+  header {
+    display: flex; align-items: center; gap: 12px;
+    padding: 8px 12px;
+    background: var(--panel); border-bottom: 1px solid var(--line);
+  }
+  header .name { font-family: var(--mono); color: var(--fg-dim); }
+  header .spacer { flex: 1; }
+
+  main { flex: 1; display: flex; min-height: 0; }
+
+  #sidebar {
+    width: 280px; flex: none; overflow-y: auto;
+    background: var(--panel); border-right: 1px solid var(--line);
+  }
+  .section { padding: 10px 12px; border-bottom: 1px solid var(--line); }
+  .section h2 {
+    margin: 0 0 8px; font-size: 11px; font-weight: 600;
+    letter-spacing: .08em; text-transform: uppercase; color: var(--fg-dim);
+  }
+
+  #cy-wrap { flex: 1; position: relative; min-width: 0; }
+  #cy { position: absolute; inset: 0; }
+
+  .stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .stat { background: var(--panel-2); border-radius: 4px; padding: 6px 8px; }
+  .stat .n { font-family: var(--mono); font-size: 16px; }
+  .stat .l { font-size: 10px; color: var(--fg-dim); text-transform: uppercase; letter-spacing: .06em; }
+
+  label.check { display: flex; align-items: center; gap: 6px; padding: 3px 0; cursor: pointer; }
+
+  select, button, input {
+    font: inherit; color: var(--fg);
+    background: var(--panel-2);
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 4px 8px;
+  }
+  select { width: 100%; }
+  button { cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+
+  #deviceList { max-height: 320px; overflow-y: auto; }
+  .device-item {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 4px; border-radius: 3px; cursor: pointer;
+  }
+  .device-item:hover { background: var(--panel-2); }
+  .device-item.active { background: var(--panel-2); outline: 1px solid var(--accent); }
+  .device-name { font-family: var(--mono); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .device-vendor { margin-left: auto; font-size: 10px; color: var(--fg-dim); }
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .dot-green { background: var(--green); }
+  .dot-red { background: var(--red); }
+
+  #nodeDetail {
+    position: absolute; right: 12px; top: 12px; width: 260px;
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px 12px; display: none;
+    box-shadow: 0 6px 20px rgba(0,0,0,.45);
+  }
+  #nodeDetail.active { display: block; }
+  .detail-hostname { font-family: var(--mono); font-size: 14px; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 10px; border: 1px solid var(--line); }
+  .tag-green { color: var(--green); border-color: var(--green); }
+  .tag-red   { color: var(--amber); border-color: var(--amber); }
+  .tag-blue  { color: var(--accent); border-color: var(--accent); }
+  .kv-row { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+  .kv-label { color: var(--fg-dim); font-size: 11px; }
+  .kv-value { font-size: 12px; }
+  .mono { font-family: var(--mono); }
+
+  #banner {
+    display: none; padding: 8px 12px;
+    background: #3a2126; border-bottom: 1px solid var(--red); color: var(--fg);
+  }
+  #banner.show { display: block; }
+  #toast {
+    position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%);
+    background: var(--panel); border: 1px solid var(--line); border-radius: 4px;
+    padding: 6px 14px; opacity: 0; transition: opacity .2s; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+  .hint { color: var(--fg-dim); font-size: 11px; }
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <strong>Map</strong>
+    <span class="name" id="mapName">—</span>
+    <span class="spacer"></span>
+    <span class="hint" id="filterInfo"></span>
+    <button id="btnReload" title="Re-read the map from the application">Reload</button>
+  </header>
+
+  <div id="banner"></div>
+
+  <main>
+    <aside id="sidebar">
+      <div class="section">
+        <h2>Inventory</h2>
+        <div class="stats">
+          <div class="stat"><div class="n" id="statDevices">0</div><div class="l">Devices</div></div>
+          <div class="stat"><div class="n" id="statConnections">0</div><div class="l">Links</div></div>
+          <div class="stat"><div class="n" id="statVendors">0</div><div class="l">Vendors</div></div>
+          <div class="stat"><div class="n" id="statUndiscovered">0</div><div class="l">Leaves</div></div>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>View</h2>
+        <select id="layoutSelect">
+          <option value="dagre">Hierarchical &#8595; Top&#8594;Bottom</option>
+          <option value="dagre-lr">Hierarchical &#8594; Left&#8594;Right</option>
+          <option value="breadthfirst">Breadth-first</option>
+          <option value="cose">Force-directed</option>
+          <option value="concentric">Concentric</option>
+          <option value="circle">Circle</option>
+          <option value="grid">Grid</option>
+        </select>
+        <label class="check"><input type="checkbox" id="hideUndiscovered" checked> Hide undiscovered</label>
+        <label class="check"><input type="checkbox" id="hideLeaf" checked> Hide leaf nodes</label>
+        <div class="row" style="margin-top:6px">
+          <button id="btnFit">Fit</button>
+          <button id="btnZoomIn">+</button>
+          <button id="btnZoomOut">−</button>
+        </div>
+      </div>
+
+      <div class="section">
+        <h2>Layout</h2>
+        <div class="row">
+          <button id="btnSaveLayout">Save</button>
+          <button id="btnClearLayout">Clear</button>
+        </div>
+        <div class="hint" id="layoutStatus" style="margin-top:6px"></div>
+      </div>
+
+      <div class="section">
+        <h2>Export</h2>
+        <div class="row">
+          <button id="btnPNG">PNG</button>
+          <button id="btnJSON">JSON</button>
+          <button id="btnDrawIO">Draw.io</button>
+        </div>
+        <select id="drawioMode" style="margin-top:6px">
+          <option value="icons">Device icons</option>
+          <option value="shapes">Plain shapes</option>
+        </select>
+        <div class="hint" style="margin-top:6px">Draw.io exports what is visible, arranged as it is now.</div>
+      </div>
+
+      <div class="section">
+        <h2>Devices</h2>
+        <div id="deviceList"></div>
+      </div>
+    </aside>
+
+    <div id="cy-wrap">
+      <div id="cy"></div>
+      <div id="nodeDetail"><div id="nodeDetailContent"></div></div>
+      <div id="toast"></div>
+    </div>
+  </main>
+</div>
+
+<script src="/assets/vendor/cytoscape.min.js"></script>
+<!-- Order matters: dagre before cytoscape-dagre. The extension captures the
+     dagre global at definition time, and getting it backwards does not fail
+     loudly -- cytoscapeDagre is still defined, viewer.js's dagreAvailable
+     check still passes, the layout still registers, and it throws on
+     graphlib the first time it is actually run. So the breadthfirst
+     fallback never fires and the map is broken rather than plain. -->
+<script src="/assets/vendor/dagre.min.js"></script>
+<script src="/assets/vendor/cytoscape-dagre.js"></script>
+<script src="/assets/viewer.js"></script>
+<script src="/assets/drawio.js"></script>
+<script src="/assets/app.js"></script>
+</body>
+</html>

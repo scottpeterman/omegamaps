@@ -1,0 +1,13 @@
+<!-- app/icons/workgroup-switch.svg: copied from internal/mapweb/assets/viewer.js
+     (_embeddedSvgs), so the preview and mapview draw the same devices. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <rect x="4" y="14" width="40" height="20" rx="3" fill="#fff" stroke="#2d5f8a" stroke-width="2.5"/>
+  <rect x="10" y="19" width="4" height="10" rx="1" fill="#2d5f8a" opacity="0.8"/>
+  <rect x="17" y="19" width="4" height="10" rx="1" fill="#2d5f8a" opacity="0.8"/>
+  <rect x="24" y="19" width="4" height="10" rx="1" fill="#2d5f8a" opacity="0.8"/>
+  <rect x="31" y="19" width="4" height="10" rx="1" fill="#2d5f8a" opacity="0.8"/>
+  <line x1="12" y1="19" x2="12" y2="17" stroke="#2d5f8a" stroke-width="1.2"/>
+  <line x1="19" y1="19" x2="19" y2="17" stroke="#2d5f8a" stroke-width="1.2"/>
+  <line x1="26" y1="19" x2="26" y2="17" stroke="#2d5f8a" stroke-width="1.2"/>
+  <line x1="33" y1="19" x2="33" y2="17" stroke="#2d5f8a" stroke-width="1.2"/>
+</svg>

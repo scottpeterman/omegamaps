@@ -1,0 +1,11 @@
+<!-- app/icons/router.svg: copied from internal/mapweb/assets/viewer.js
+     (_embeddedSvgs), so the preview and mapview draw the same devices. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <circle cx="24" cy="24" r="16" fill="#fff" stroke="#2d5f8a" stroke-width="2.5"/>
+  <line x1="8" y1="24" x2="40" y2="24" stroke="#2d5f8a" stroke-width="2"/>
+  <line x1="24" y1="8" x2="24" y2="40" stroke="#2d5f8a" stroke-width="2"/>
+  <polyline points="14,20 8,24 14,28" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+  <polyline points="34,20 40,24 34,28" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+  <polyline points="20,14 24,8 28,14" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+  <polyline points="20,34 24,40 28,34" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+</svg>

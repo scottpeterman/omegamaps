@@ -1,0 +1,27 @@
+Value Required LOCAL_INTERFACE (\S+)
+Value Required PARENT_INTERFACE (\S+)
+Value Required CHASSIS_ID ((?:[0-9A-Fa-f]{2}:){5}[0-9A-Fa-f]{2})
+Value Required NEIGHBOR_INTERFACE (.+?)
+Value Required NEIGHBOR_NAME (\S+)
+
+Start
+  # column header
+  ^Local\s+Interface\s+Parent\s+Interface\s+Chassis\s+Id\s+Port\s+info\s+System\s+Name
+  # Junos RE context + CLI prompt lines
+  ^\{master:.*\}\s*$$
+  ^\S+@\S+>.*$$
+  # drop server-NIC LLDP-MED noise (real neighbor is on its own tor0 line)
+  ^\S+\s+\S+\s+\S+\s+NIC\s+\d+Gb\s+backplane\b.*$$
+  # actual neighbor rows. NEIGHBOR_INTERFACE is deliberately loose - port info
+  # on this table is free text and routinely carries spaces (circuit IDs, PNI
+  # descriptions, LLDP-MED strings). CHASSIS_ID is deliberately tight for the
+  # same reason: with a loose port field, any line of five or more words
+  # matches this rule, and a trailing "warning: lldp is not configured on all
+  # interfaces" parses as a neighbor named "interfaces". Anchoring on the MAC
+  # is what keeps the Error rule below meaningful instead of decorative.
+  ^${LOCAL_INTERFACE}\s+${PARENT_INTERFACE}\s+${CHASSIS_ID}\s+${NEIGHBOR_INTERFACE}\s+${NEIGHBOR_NAME}\s*$$ -> Record
+  ^\s*$$
+  # Kept strict on purpose. Hard-wrapped rows are repaired before the parse
+  # (internal/crawler/unwrap.go); anything still unrecognized here is a format
+  # this template has not seen, and failing loudly beats recording half of it.
+  ^. -> Error

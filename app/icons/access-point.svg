@@ -1,0 +1,9 @@
+<!-- app/icons/access-point.svg: copied from internal/mapweb/assets/viewer.js
+     (_embeddedSvgs), so the preview and mapview draw the same devices. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+  <ellipse cx="24" cy="34" rx="15" ry="6" fill="#fff" stroke="#2d5f8a" stroke-width="2.5"/>
+  <line x1="24" y1="28" x2="24" y2="18" stroke="#2d5f8a" stroke-width="2"/>
+  <path d="M16 16 A11 11 0 0 1 32 16" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+  <path d="M19 20 A7 7 0 0 1 29 20" fill="none" stroke="#2d5f8a" stroke-width="1.8"/>
+  <circle cx="24" cy="34" r="2" fill="#2d5f8a"/>
+</svg>

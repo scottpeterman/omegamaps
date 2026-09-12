@@ -1,0 +1,20 @@
+Value Required LOCAL_INTERFACE (\S+)
+Value NEIGHBOR_INTERFACE ([^"]+)
+Value NEIGHBOR_NAME ([^"]+)
+Value NEIGHBOR_DESCRIPTION ([^"]+)
+Value MGMT_ADDRESS (\d+\.\d+\.\d+\.\d+)
+
+Start
+  ^Interface\s+${LOCAL_INTERFACE}\s+detected\s+[1-9] -> Neighbor
+  ^Interface\s+\S+\s+detected\s+0
+
+Neighbor
+  ^\s+Port ID\s+:\s+"${NEIGHBOR_INTERFACE}"
+  ^\s+-\s+System Name:\s+"${NEIGHBOR_NAME}"
+  ^\s+-\s+System Description:\s+"${NEIGHBOR_DESCRIPTION}
+  ^\s+Management Address\s+:\s+${MGMT_ADDRESS}
+  ^Interface\s+\S+\s+detected\s+[1-9] -> Continue.Record
+  ^Interface\s+${LOCAL_INTERFACE}\s+detected\s+[1-9]
+  ^Interface\s+\S+\s+detected\s+0 -> Record Start
+  ^\w[\w-]+[#>]?\s*$$ -> Record
+

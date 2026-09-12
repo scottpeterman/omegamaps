@@ -1,0 +1,29 @@
+Value Required NEIGHBOR_NAME (\S+)
+Value MGMT_ADDRESS (\d+\.\d+\.\d+\.\d+)
+Value PLATFORM (.*)
+Value NEIGHBOR_INTERFACE (.*)
+Value LOCAL_INTERFACE (.*)
+Value NEIGHBOR_DESCRIPTION (.*)
+Value CAPABILITIES (.+?)
+
+Start
+  ^Device\s+ID:\s*${NEIGHBOR_NAME}
+  ^System\s+Name:\s*${NEIGHBOR_NAME}
+  ^Interface\s+address\(es\) -> ParseInterfaceIP
+  ^Platform\s*:\s*${PLATFORM}\s*,\s*Capabilities\s*:\s*${CAPABILITIES}
+  ^Interface:\s+${LOCAL_INTERFACE},\s+Port\s+ID\s+\(outgoing\s+port\):\s+${NEIGHBOR_INTERFACE}
+  ^Mgmt\s+address\(es\) -> ParseMgmtIP
+  ^Version: -> GetVersion
+  ^Load\s+for\s+
+  ^Time\s+source\s+is
+
+ParseInterfaceIP
+  ^\s+IPv4\s+Address:\s+${MGMT_ADDRESS} -> Start
+  ^. -> Start
+
+ParseMgmtIP
+  ^\s+IPv4\s+Address:\s+${MGMT_ADDRESS} -> Start
+  ^. -> Start
+
+GetVersion
+  ^${NEIGHBOR_DESCRIPTION} -> Record Start

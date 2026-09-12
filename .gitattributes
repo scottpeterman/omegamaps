@@ -1,0 +1,25 @@
+# Line endings. LF in the repo for everything text, because the tree is
+# authored on Linux and macOS -- except the Windows scripts, which get CRLF on
+# checkout. A .bat file with LF-only endings misparses `goto` across
+# parenthesised blocks, which is a failure that reads as a logic bug rather
+# than a line-ending one.
+* text=auto eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
+
+# Vendored JavaScript. linguist-vendored keeps GitHub from reporting this as a
+# JavaScript project: cytoscape.min.js alone outweighs every .go file in the
+# tree, and the language bar is the first thing a visitor reads. -diff stops
+# git from trying to diff a minified bundle.
+internal/mapweb/assets/vendor/** linguist-vendored
+*.min.js -diff
+
+# Licence texts are not written here and should not count as source.
+licenses/** linguist-vendored
+THIRD-PARTY-NOTICES.md linguist-generated
+
+# Binary, so git never rewrites them.
+*.png binary
+*.ico binary
+*.icns binary

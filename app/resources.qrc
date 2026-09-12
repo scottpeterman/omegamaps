@@ -1,0 +1,16 @@
+<!DOCTYPE RCC>
+<RCC version="1.0">
+  <qresource prefix="/omegamaps">
+    <file alias="platform_map.json">../internal/mapweb/assets/platform_map.json</file>
+    <file>icons/access-point.svg</file>
+    <file>icons/chevron-down.svg</file>
+    <file>icons/firewall.svg</file>
+    <file>icons/layer-3-switch.svg</file>
+    <file>icons/multilayer-switch.svg</file>
+    <file>icons/router.svg</file>
+    <file>icons/server.svg</file>
+    <file>icons/undiscovered.svg</file>
+    <file>icons/workgroup-switch.svg</file>
+    <file>splash.png</file>
+  </qresource>
+</RCC>

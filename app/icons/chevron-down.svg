@@ -1,0 +1,7 @@
+<!-- app/icons/chevron-down.svg: the combobox arrow. A mid grey that reads on
+     every theme; Qt stylesheets cannot recolour an image, and the CSS
+     border-triangle trick draws a bar in Qt, not a triangle. -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 12 12">
+  <polyline points="2.5,4.5 6,8 9.5,4.5" fill="none" stroke="#8b98ab" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

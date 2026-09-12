@@ -1,0 +1,18 @@
+Value Required LOCAL_INTERFACE (\S+)
+Value NEIGHBOR_INTERFACE (\S+)
+Value NEIGHBOR_NAME (\S+)
+Value NEIGHBOR_DESCRIPTION (.+)
+Value MGMT_ADDRESS (\d+\.\d+\.\d+\.\d+)
+
+Start
+  ^-+$$ -> Continue.Record
+  ^Local Intf:\s+${LOCAL_INTERFACE}
+  ^Port id:\s+${NEIGHBOR_INTERFACE}
+  ^System Name:\s+${NEIGHBOR_NAME}
+  ^System Description:\s*$$ -> GetDescription
+  ^\s+IP:\s+${MGMT_ADDRESS}
+
+GetDescription
+  ^${NEIGHBOR_DESCRIPTION}$$ -> Start
+
+EOF
