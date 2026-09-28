@@ -34,6 +34,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"strings"
 	"sync"
@@ -344,6 +345,14 @@ func (v *Vault) Create(master string) error {
 	}
 	if v.Exists() {
 		return ErrVaultExists
+	}
+
+	// First run on a fresh machine: ~/.omegamaps does not exist yet, and
+	// secfile.WriteAtomic creates its temp file in the target directory, so
+	// Create has to make the directory itself. The CLI's init did this on its
+	// own; the GUI (via capi) did not, and failed on first launch.
+	if err := os.MkdirAll(filepath.Dir(v.path), 0o700); err != nil {
+		return fmt.Errorf("failed to create vault directory: %w", err)
 	}
 
 	salt := make([]byte, vaultSaltLen)

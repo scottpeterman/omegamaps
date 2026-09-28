@@ -20,6 +20,24 @@ func newTestVault(t *testing.T) *Vault {
 	return v
 }
 
+// A fresh install has no ~/.omegamaps yet. Create must make the parent
+// directory itself (the GUI reaches Create through capi with no mkdir first).
+func TestCreateMakesMissingParentDir(t *testing.T) {
+	parent := filepath.Join(t.TempDir(), ".omegamaps", "nested")
+	path := filepath.Join(parent, "vault.json")
+
+	v := New(path)
+	if err := v.Create("lab-master-passphrase"); err != nil {
+		t.Fatalf("Create into missing directory: %v", err)
+	}
+	if !v.Exists() {
+		t.Fatal("vault file not written")
+	}
+	if err := secfile.Verify(path); err != nil {
+		t.Fatalf("vault not private: %v", err)
+	}
+}
+
 func TestCreateUnlockRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "credentials.vault")
