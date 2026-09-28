@@ -11,7 +11,7 @@
 # configure step -- see docs/BUILDING.md.
 
 cmake_minimum_required(VERSION 3.19)
-project(omegamaps VERSION 0.1.0 LANGUAGES C CXX)
+project(omegamaps VERSION 0.1.2 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -76,14 +76,34 @@ file(GLOB_RECURSE OMEGAMAPS_GO_SOURCES CONFIGURE_DEPENDS
 list(APPEND OMEGAMAPS_GO_SOURCES
     "${CMAKE_CURRENT_SOURCE_DIR}/go.mod")
 
+# The version the archive reports (omegamaps_version(), the About box, both
+# applications' --version). Empty means v<project VERSION> above; build-app.sh
+# --version sets it, and passes it empty otherwise so an old override does not
+# stick in the cache. Stamped with -X into internal/buildinfo, the same symbol
+# build.sh stamps into the command-line tools.
+set(OMEGAMAPS_VERSION "" CACHE STRING "Version stamped into the Go archive (empty: v\${PROJECT_VERSION})")
+if(OMEGAMAPS_VERSION STREQUAL "")
+    set(OMEGAMAPS_STAMPED_VERSION "v${PROJECT_VERSION}")
+else()
+    set(OMEGAMAPS_STAMPED_VERSION "${OMEGAMAPS_VERSION}")
+endif()
+message(STATUS "omegamaps version: ${OMEGAMAPS_STAMPED_VERSION}")
+
+# A file whose content is the version, rewritten only when it changes, so a
+# version change rebuilds the archive (the Go sources did not change) and an
+# unchanged one does not. bundle-linux.sh reads it for the archive name.
+set(OMEGAMAPS_VERSION_STAMP "${CMAKE_CURRENT_BINARY_DIR}/app-version.txt")
+file(CONFIGURE OUTPUT "${OMEGAMAPS_VERSION_STAMP}" CONTENT "${OMEGAMAPS_STAMPED_VERSION}\n")
+
 add_custom_command(
     OUTPUT ${OMEGAMAPS_ARCHIVE} ${OMEGAMAPS_GENERATED_HEADER}
     COMMAND ${CMAKE_COMMAND} -E env ${OMEGAMAPS_GO_ENV}
             ${GO_EXECUTABLE} build -buildmode=c-archive -trimpath
+            "-ldflags=-X github.com/scottpeterman/omegamaps/internal/buildinfo.Version=${OMEGAMAPS_STAMPED_VERSION}"
             -o ${OMEGAMAPS_ARCHIVE} ./capi
     ${OMEGAMAPS_PDATA_FIX}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    DEPENDS ${OMEGAMAPS_GO_SOURCES}
+    DEPENDS ${OMEGAMAPS_GO_SOURCES} ${OMEGAMAPS_VERSION_STAMP}
     COMMENT "Building Go c-archive (libomegamaps)"
     VERBATIM)
 

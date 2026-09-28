@@ -96,6 +96,13 @@ fi
 if [[ ${#BINARIES[@]} -gt 1 && -n "${NAME}" ]]; then
     die "--name with ${#BINARIES[@]} applications found; bundle them one at a time with --binary"
 fi
+# Default: the version the build stamped into the binary (CMake writes it to
+# app-version.txt at the top of the build directory), so the archive name
+# matches what the About box says. git describe only when there is none.
+if [[ -z "${VERSION}" ]]; then
+    stamp="$(dirname "${BINARIES[0]}")/../app-version.txt"
+    [[ -f "${stamp}" ]] && VERSION="$(tr -d '[:space:]' < "${stamp}")"
+fi
 if [[ -z "${VERSION}" ]]; then
     VERSION="$(git describe --tags --always --dirty 2>/dev/null || true)"
 fi
@@ -123,24 +130,40 @@ QT_CORE="$(ldd "${BINARY}" | awk '/libQt6Core\.so/ {print $3}' | head -1)"
 [[ -n "${QT_CORE}" && -f "${QT_CORE}" ]] || die "the binary does not link Qt6 Core; is ${BINARY} the application?"
 QT_LIB_DIR="$(dirname "${QT_CORE}")"
 
-# Qt's plugin directory: ask qmake/qtpaths where they exist, else the usual
-# places beside the libraries.
-QT_PLUGIN_DIR=""
-for q in qtpaths6 qtpaths qmake6 qmake; do
-    command -v "$q" >/dev/null || continue
-    case "$q" in
-        qtpaths*) QT_PLUGIN_DIR="$("$q" --query QT_INSTALL_PLUGINS 2>/dev/null || true)" ;;
-        qmake*)   QT_PLUGIN_DIR="$("$q" -query QT_INSTALL_PLUGINS 2>/dev/null || true)" ;;
-    esac
-    [[ -n "${QT_PLUGIN_DIR}" && -d "${QT_PLUGIN_DIR}" ]] && break
-    QT_PLUGIN_DIR=""
-done
+# Qt's plugin directory -- of the Qt this binary links, never whichever
+# qtpaths is first on PATH. On a machine with both a distribution Qt and an
+# installer/aqt one, PATH's qtpaths is the distribution's, its plugins are
+# built for another Qt, and the bundled Qt skips every one of them: "Could not
+# find the Qt platform plugin xcb". So: the qtpaths that ships beside these
+# libraries, then the layouts beside them, then PATH's only if it reports
+# this same library directory.
+QT_LIB_REAL="$(cd "${QT_LIB_DIR}" && pwd -P)"
+QT_PLUGIN_DIR="${QT_PLUGIN_DIR:-}"
 if [[ -z "${QT_PLUGIN_DIR}" ]]; then
-    for candidate in "${QT_LIB_DIR}/qt6/plugins" "${QT_LIB_DIR}/../plugins" "${QT_LIB_DIR}/qt6/plugins"; do
-        [[ -d "${candidate}" ]] && { QT_PLUGIN_DIR="$(cd "${candidate}" && pwd)"; break; }
+    for q in "${QT_LIB_DIR}/../bin/qtpaths6" "${QT_LIB_DIR}/../bin/qtpaths" "${QT_LIB_DIR}/../libexec/qtpaths"; do
+        [[ -x "$q" ]] || continue
+        QT_PLUGIN_DIR="$("$q" --query QT_INSTALL_PLUGINS 2>/dev/null || true)"
+        [[ -n "${QT_PLUGIN_DIR}" && -d "${QT_PLUGIN_DIR}" ]] && break
+        QT_PLUGIN_DIR=""
     done
 fi
-[[ -n "${QT_PLUGIN_DIR}" ]] || die "cannot find Qt's plugin directory (install qtpaths, or point QT_PLUGIN_DIR at it)"
+if [[ -z "${QT_PLUGIN_DIR}" ]]; then
+    for candidate in "${QT_LIB_DIR}/../plugins" "${QT_LIB_DIR}/qt6/plugins"; do
+        [[ -d "${candidate}/platforms" ]] && { QT_PLUGIN_DIR="$(cd "${candidate}" && pwd)"; break; }
+    done
+fi
+if [[ -z "${QT_PLUGIN_DIR}" ]]; then
+    for q in qtpaths6 qtpaths; do
+        command -v "$q" >/dev/null || continue
+        libs="$("$q" --query QT_INSTALL_LIBS 2>/dev/null || true)"
+        [[ -n "${libs}" && "$(cd "${libs}" 2>/dev/null && pwd -P)" == "${QT_LIB_REAL}" ]] || continue
+        QT_PLUGIN_DIR="$("$q" --query QT_INSTALL_PLUGINS 2>/dev/null || true)"
+        [[ -n "${QT_PLUGIN_DIR}" && -d "${QT_PLUGIN_DIR}" ]] && break
+        QT_PLUGIN_DIR=""
+    done
+fi
+[[ -n "${QT_PLUGIN_DIR}" ]] || die "cannot find the plugin directory of the Qt in ${QT_LIB_DIR} (set QT_PLUGIN_DIR to it)"
+say "Qt plugins: ${QT_PLUGIN_DIR}"
 
 # Left to the machine. Anything matching these is not copied: the graphics,
 # display and system stack has to be the host's.
@@ -230,10 +253,36 @@ set -euo pipefail
 here="\$(cd "\$(dirname "\$(readlink -f "\${BASH_SOURCE[0]}")")" && pwd)"
 export LD_LIBRARY_PATH="\${here}/lib\${LD_LIBRARY_PATH:+:\${LD_LIBRARY_PATH}}"
 export QT_PLUGIN_PATH="\${here}/plugins"
-exec "\${here}/bin/${prog}" "\\$@"
+exec "\${here}/bin/${prog}" "\$@"
 EOF
     chmod +x "${DIR}/${prog}"
 done
+
+# Checked here rather than on somebody else's machine. Every Qt library in
+# the bundle has to be the build's Qt, and the xcb plugin has to resolve
+# against the bundle with nothing missing.
+for f in "${DIR}"/lib/libQt6*.so*; do
+    [[ -f "$f" ]] || continue
+    base="$(basename "$f")"
+    [[ -f "${QT_LIB_DIR}/${base}" ]] || die "${base} came from outside ${QT_LIB_DIR}: plugins from another Qt were pulled in"
+done
+if [[ -f "${DIR}/plugins/platforms/libqxcb.so" ]]; then
+    missing="$(LD_LIBRARY_PATH="${DIR}/lib" ldd "${DIR}/plugins/platforms/libqxcb.so" | awk '/not found/{print $1}' | tr '\n' ' ')"
+    [[ -z "${missing}" ]] || echo "warning: the xcb plugin needs, and this machine lacks: ${missing}" >&2
+fi
+# The launcher end to end, offscreen: Qt loads its platform plugin out of the
+# bundle's plugins/ (a plugin set from another Qt fails here), and --version
+# exits before any window.
+first="$(basename "${BINARIES_IN[0]}")"
+if smoke="$(env -u QT_PLUGIN_PATH -u QT_QPA_PLATFORM_PLUGIN_PATH QT_QPA_PLATFORM=offscreen timeout 20 "${DIR}/${first}" --version 2>&1)"; then
+    say "launcher check: ${smoke//$'\n'/ }"
+elif [[ "${smoke}" == *"platform plugin"* ]]; then
+    echo "${smoke}" >&2
+    die "the bundled ${first} cannot load a Qt platform plugin (above); not archiving it"
+else
+    echo "warning: '${first} --version' did not exit cleanly offscreen; the plugins loaded, but check it runs:" >&2
+    echo "${smoke}" | head -5 >&2
+fi
 
 for doc in README.md LICENSE; do
     [[ -f "${doc}" ]] && cp "${doc}" "${DIR}/"
