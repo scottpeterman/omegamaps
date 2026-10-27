@@ -66,7 +66,7 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-[[ "$(uname -s)" == "Linux" ]] || die "this bundles for Linux and has to run on Linux (see bundle-macos.sh)"
+[[ "$(uname -s)" == "Linux" ]] || die "this bundles for Linux and has to run on Linux (see bundle-mac.sh)"
 
 # --- what to bundle ----------------------------------------------------------
 

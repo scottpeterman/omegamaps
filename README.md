@@ -59,6 +59,9 @@ Any recording can be opened and played back through the same views, in real
 time or faster -- including a crawl that has just finished. Three themes:
 Cyber, Dark and Light.
 
+Every build, package and release command, per platform, is in
+[BUILDING.md](BUILDING.md).
+
 ```bash
 ./scripts/build-app.sh            # finds Qt, configures, builds
 ./build/app/omegamaps             # the application

@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=omegamaps
+GenericName=Network Mapper
+Comment=Crawl a network over SSH and SNMP and map what is connected to what
+Exec=omegamaps
+Icon=omegamaps
+Terminal=false
+Categories=Network;Utility;

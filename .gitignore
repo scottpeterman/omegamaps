@@ -77,3 +77,7 @@ __pycache__/
 
 # scripts/demo-screenshots.sh output
 /demo-shots/
+
+# scripts/bundle-appimage.sh: linuxdeploy downloads and its staging tree
+/.linuxdeploy/
+/AppDir/

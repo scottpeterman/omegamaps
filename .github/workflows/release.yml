@@ -1,0 +1,210 @@
+# .github/workflows/release.yml
+#
+# Builds the three packages with the same scripts used by hand:
+#
+#   Linux    scripts/bundle-appimage.sh           dist/omegamaps-<ver>-x86_64.AppImage
+#   Windows  scripts\bundle-windows.bat --zip     dist\omegamaps-windows-x64.zip
+#   macOS    scripts/bundle-mac.sh                dist/omegamaps-<ver>-arm64.dmg
+#
+# Each package carries both programs: omegamaps and the map viewer with its Qt
+# WebEngine payload. Each job then proves the packaged viewer works: it crawls
+# the demo network (cmd/demonet), opens that map in the viewer from inside the
+# package, and fails unless the page reports the map loaded -- read through
+# WebEngine's remote-debugging endpoint: the page's title is "Map" until a
+# map has loaded and "<name>.json — Map" after. A
+# viewer missing its helper process or resources opens a blank window, which
+# no file-presence check catches.
+#
+# Triggers:
+#   push of a tag vX.Y.Z  build all three, then publish a GitHub release.
+#                         The tag must equal project(VERSION) in CMakeLists.txt.
+#   workflow_dispatch     build all three, artifacts only, no release.
+
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  QT_VERSION: "6.10.3"
+  QT_MODULES: "qtwebengine qtwebchannel qtpositioning"
+  GO_VERSION: "1.25"
+
+jobs:
+  meta:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: v
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(sed -n 's/^project(omegamaps VERSION \([0-9.]*\).*/\1/p' CMakeLists.txt)"
+          [[ -n "$version" ]] || { echo "::error::no project(VERSION) in CMakeLists.txt"; exit 1; }
+          if [[ "${GITHUB_REF_TYPE}" == "tag" && "${GITHUB_REF_NAME}" != "v${version}" ]]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match CMakeLists.txt version ${version}"
+            exit 1
+          fi
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "omegamaps ${version}"
+
+  linux:
+    needs: meta
+    # Oldest supported runner: the AppImage carries Qt but takes glibc from the
+    # host, so building on the oldest base is what lets it run on the most.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: ${{ env.QT_MODULES }}
+          cache: true
+      - name: System packages
+        run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libegl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libfontconfig1 libdbus-1-3 libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libasound2 libgbm1 libxshmfence1 xvfb
+      - name: Build AppImage
+        run: bash scripts/bundle-appimage.sh --qt "$QT_ROOT_DIR"
+      - name: Smoke test (the packaged viewer loads a map)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/demonet -out "$RUNNER_TEMP/demo" -speed 0
+          img="dist/omegamaps-${{ needs.meta.outputs.version }}-x86_64.AppImage"
+          cd "$RUNNER_TEMP" && "$GITHUB_WORKSPACE/$img" --appimage-extract >/dev/null
+          export QTWEBENGINE_REMOTE_DEBUGGING=9222
+          xvfb-run -a timeout 90 squashfs-root/usr/bin/omegamaps-viewer "$RUNNER_TEMP/demo/demo.json" > viewer.log 2>&1 &
+          for i in $(seq 1 60); do
+            sleep 1
+            title="$(curl -s http://127.0.0.1:9222/json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[0]["title"] if d else "")' 2>/dev/null || true)"
+            if [[ "$title" == demo.json* ]]; then echo "map page loaded after ${i}s: $title"; exit 0; fi
+          done
+          cat viewer.log
+          echo "::error::the packaged viewer never reported the map loaded"
+          exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux
+          path: dist/omegamaps-*.AppImage
+          if-no-files-found: error
+
+  windows:
+    needs: meta
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          arch: win64_msvc2022_64
+          modules: ${{ env.QT_MODULES }}
+          cache: true
+      # vcvars64: cl.exe on PATH and VCToolsRedistDir set; bundle-windows.bat
+      # checks both. cgo needs the runner's mingw-w64 gcc as well.
+      - uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Toolchain
+        shell: cmd
+        run: |
+          where gcc || (echo ::error::no mingw gcc on PATH for cgo & exit /b 1)
+          gcc -dumpmachine
+          go version
+      - name: Build zip
+        shell: cmd
+        run: call scripts\bundle-windows.bat --qt "%QT_ROOT_DIR%" --zip
+      - name: Smoke test (the packaged viewer loads a map)
+        shell: pwsh
+        run: |
+          go run ./cmd/demonet -out "$env:RUNNER_TEMP\demo" -speed 0
+          $env:QTWEBENGINE_REMOTE_DEBUGGING = "9222"
+          $p = Start-Process -FilePath "dist\omegamaps\omegamaps-viewer.exe" -ArgumentList "`"$env:RUNNER_TEMP\demo\demo.json`"" -PassThru
+          for ($i = 1; $i -le 60; $i++) {
+            Start-Sleep -Seconds 1
+            try { $pages = Invoke-RestMethod -Uri "http://127.0.0.1:9222/json" -TimeoutSec 2 } catch { continue }
+            $title = ($pages | Select-Object -First 1).title
+            if ($title -like "demo.json*") { Write-Host "map page loaded after ${i}s: $title"; Stop-Process -Id $p.Id -Force; exit 0 }
+          }
+          Stop-Process -Id $p.Id -Force -ErrorAction SilentlyContinue
+          Write-Error "the packaged viewer never reported the map loaded"
+          exit 1
+      - name: Name the zip
+        shell: pwsh
+        run: Move-Item dist\omegamaps-windows-x64.zip "dist\omegamaps-${{ needs.meta.outputs.version }}-windows-x64.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows
+          path: dist/omegamaps-*-windows-x64.zip
+          if-no-files-found: error
+
+  macos:
+    needs: meta
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: ${{ env.GO_VERSION }}
+          cache-dependency-path: go.sum
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: ${{ env.QT_MODULES }}
+          cache: true
+      - name: Build dmg
+        run: bash scripts/bundle-mac.sh --qt "$QT_ROOT_DIR"
+      - name: Smoke test (the packaged viewer loads a map)
+        shell: bash
+        run: |
+          set -euo pipefail
+          go run ./cmd/demonet -out "$RUNNER_TEMP/demo" -speed 0
+          export QTWEBENGINE_REMOTE_DEBUGGING=9222
+          build-mac/app/omegamaps-viewer.app/Contents/MacOS/omegamaps-viewer "$RUNNER_TEMP/demo/demo.json" > "$RUNNER_TEMP/viewer.log" 2>&1 &
+          pid=$!
+          for i in $(seq 1 60); do
+            sleep 1
+            title="$(curl -s http://127.0.0.1:9222/json | python3 -c 'import sys,json; d=json.load(sys.stdin); print(d[0]["title"] if d else "")' 2>/dev/null || true)"
+            if [[ "$title" == demo.json* ]]; then echo "map page loaded after ${i}s: $title"; kill "$pid" || true; exit 0; fi
+          done
+          kill "$pid" || true
+          cat "$RUNNER_TEMP/viewer.log"
+          echo "::error::the packaged viewer never reported the map loaded"
+          exit 1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos
+          path: dist/omegamaps-*.dmg
+          if-no-files-found: error
+
+  release:
+    if: github.ref_type == 'tag'
+    needs: [meta, linux, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Checksums
+        working-directory: out
+        run: sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${GITHUB_REF_NAME}" out/* --repo "${GITHUB_REPOSITORY}" --title "omegamaps ${{ needs.meta.outputs.version }}" --generate-notes

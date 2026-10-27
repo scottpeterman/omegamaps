@@ -1,5 +1,8 @@
 # Building omegamaps
 
+Just the commands: [BUILDING.md](../BUILDING.md) at the repository root.
+This is the detail behind them.
+
 ## What you need
 
 | | Version | Notes |
