@@ -65,6 +65,15 @@ export QMAKE
 QT_PREFIX="$("${QMAKE}" -query QT_INSTALL_PREFIX)"
 say "Qt $("${QMAKE}" -query QT_VERSION) at ${QT_PREFIX}"
 
+# The NMEA position plugin links QtSerialPort. linuxdeploy's Qt plugin deploys
+# every position plugin and stops on a library it can't find, after the build.
+# Say so now, with the fix.
+QT_PLUGINS_DIR="$("${QMAKE}" -query QT_INSTALL_PLUGINS)"
+QT_LIBS_DIR="$("${QMAKE}" -query QT_INSTALL_LIBS)"
+if [[ -f "${QT_PLUGINS_DIR}/position/libqtposition_nmea.so" && ! -e "${QT_LIBS_DIR}/libQt6SerialPort.so.6" ]]; then
+    die "this Qt has the NMEA position plugin but not Qt Serial Port, which it links; linuxdeploy will stop on it. Add the Qt Serial Port module (Qt Maintenance Tool, or aqt: -m qtserialport)."
+fi
+
 # --- build -------------------------------------------------------------------
 say "building into ${BUILD_DIR}"
 cmake -S . -B "${BUILD_DIR}" -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH="${QT_PREFIX}" >/dev/null

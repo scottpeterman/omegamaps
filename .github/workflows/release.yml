@@ -69,7 +69,9 @@ jobs:
       - uses: jurplel/install-qt-action@v4
         with:
           version: ${{ env.QT_VERSION }}
-          modules: ${{ env.QT_MODULES }}
+          # qtserialport: Qt's NMEA position plugin links it, and linuxdeploy
+          # (unlike macdeployqt/windeployqt) fails on a dependency it can't find.
+          modules: ${{ env.QT_MODULES }} qtserialport
           cache: true
       - name: System packages
         run: sudo apt-get update && sudo apt-get install -y libgl1-mesa-dev libegl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libfontconfig1 libdbus-1-3 libnss3 libnspr4 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libasound2 libgbm1 libxshmfence1 xvfb

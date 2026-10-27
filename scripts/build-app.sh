@@ -442,6 +442,6 @@ if [[ -n "${PROBE_EVENTS}" ]]; then
 fi
 
 echo
-echo "built ${STAMPED}; bundle it with: ./scripts/bundle-linux.sh"
+echo "built ${STAMPED}; bundle it with: ./scripts/bundle-appimage.sh (macOS: bundle-mac.sh)"
 echo "run it with:"
 echo "      ${APP} path/to/events.json"
