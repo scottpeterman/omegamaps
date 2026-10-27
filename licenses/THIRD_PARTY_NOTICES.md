@@ -140,6 +140,10 @@ SOFTWARE.
 
 Embedded from `internal/tfsm/templates/` via //go:embed. Written for this project against live device output, not derived from another template collection. The filenames follow the `<vendor>_<os>_<command>.textfsm` convention that ntc-templates also uses, because it is the convention the format grew up with -- noted here so the resemblance is not mistaken for provenance.
 
+### Cisco network topology icons
+
+Embedded from `internal/mapweb/assets/icons/cisco/` via //go:embed and compiled into the application's Qt resources. 22 images from Cisco's network topology icon set, published by Cisco Systems, Inc. for use in network diagrams (https://www.cisco.com/c/en/us/about/brand-center/network-topology-icons.html), carried over unmodified from securecartography2 together with the platform-to-icon table `internal/mapweb/assets/platform_icon_map.json`. Cisco and the Cisco logo are trademarks of Cisco Systems, Inc.; the icons are used to depict network devices and imply no endorsement. They remain subject to the terms Cisco publishes with the set, not to this project's GPLv3.
+
 ## Go modules
 
 Statically linked into the transport archive and into the commands under `cmd/`.

@@ -8,6 +8,9 @@
 add_executable(replay_probe replay_probe.cpp)
 target_link_libraries(replay_probe PRIVATE omegamaps_ui)
 
+add_executable(icons_probe icons_probe.cpp)
+target_link_libraries(icons_probe PRIVATE omegamaps_ui)
+
 # fakelab is the fake lab crawl_probe crawls: a Go program, built here so it
 # sits beside the probe. Pure Go -- no cgo -- and never shipped.
 set(OMEGAMAPS_FAKELAB "${CMAKE_CURRENT_BINARY_DIR}/fakelab${CMAKE_EXECUTABLE_SUFFIX}")
@@ -35,4 +38,8 @@ if(OMEGAMAPS_HAVE_VIEWER)
     add_executable(viewer_probe viewer_probe.cpp)
     target_link_libraries(viewer_probe PRIVATE omegamaps_viewer)
     add_dependencies(viewer_probe omegamaps-viewer)
+
+    # README screenshots from the demo network; see tests/demo_shots.cpp.
+    add_executable(demo_shots demo_shots.cpp)
+    target_link_libraries(demo_shots PRIVATE omegamaps_viewer)
 endif()

@@ -79,6 +79,8 @@ public:
 
 public slots:
     void fit();
+    // Repaint after the icon set changed; each node re-picks its icon.
+    void refreshIcons();
 
 private:
     void scheduleLayout();

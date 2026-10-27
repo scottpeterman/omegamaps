@@ -64,6 +64,18 @@ const DrawIOExport = {
     default: { fill: '#8BB8F0', stroke: '#3070CC', font: '#1A3060' },
   },
 
+  // Stencil fills, as securecartography2 draws them: the vendor's own colour
+  // on the stencil body with a white outline, which is what makes a Cisco
+  // stencil read as the familiar blue icon rather than a pale tint.
+  _stencilFill: {
+    cisco: '#036897',
+    arista: '#2D8659',
+    juniper: '#F58536',
+    paloalto: '#FA582D',
+    fortinet: '#EE3124',
+    default: '#036897',
+  },
+
   // A node nobody dialled is drawn dashed and pale. It is a claim, not a fact,
   // and the diagram should keep saying so after it leaves this application.
   _undiscoveredStyle: { fill: '#FFE0E0', stroke: '#FF6B6B', font: '#993333' },
@@ -102,8 +114,12 @@ const DrawIOExport = {
         .filter(([k]) => !k.startsWith('_comment'))
         .sort((a, b) => b[0].length - a[0].length);
 
+      // Case-insensitive, as in securecartography2 and the viewer's Cisco
+      // icon set: a platform is "Arista vEOS-lab EOS" from one source and
+      // "arista_eos" from another, and the table is written in neither case.
+      const p = (platform || '').toLowerCase();
       for (const [pattern, shape] of patterns) {
-        if ((platform || '').includes(pattern)) return this._terminate(shape);
+        if (p.includes(pattern.toLowerCase())) return this._terminate(shape);
       }
     }
 
@@ -133,6 +149,15 @@ const DrawIOExport = {
   // ═══════════════════════════════════════════════════════════════
 
   _buildNodeStyle(platformMap, node, useShapes) {
+    // An undiscovered node a neighbour described gets the stencil it claims,
+    // dashed so the diagram still says it was never dialled.
+    if (!node.discovered && !useShapes && node.peerPlatform) {
+      const s = this._undiscoveredStyle;
+      const shape = this._resolveShape(platformMap, node.peerPlatform, node.id, node.role);
+      return `${shape}fillColor=${s.stroke};strokeColor=#ffffff;dashed=1;dashPattern=8 4;` +
+        'fontColor=#000000;opacity=70;fontSize=10;fontStyle=1;' +
+        'verticalLabelPosition=bottom;verticalAlign=top;html=1;';
+    }
     if (!node.discovered) {
       const s = this._undiscoveredStyle;
       const width = useShapes ? 'strokeWidth=2;' : '';
@@ -151,7 +176,9 @@ const DrawIOExport = {
     }
 
     const shape = this._resolveShape(platformMap, node.platform, node.id, node.role);
-    return `${shape}fillColor=${colors.fill};strokeColor=${colors.stroke};fontColor=${colors.font};` +
+    const fill = this._stencilFill[node.vendor] || this._stencilFill.default;
+    return `${shape}fillColor=${fill};strokeColor=#ffffff;strokeWidth=2;gradientColor=none;sketch=0;` +
+      'fontColor=#000000;labelBackgroundColor=none;' +
       'fontSize=10;fontStyle=1;verticalLabelPosition=bottom;verticalAlign=top;html=1;';
   },
 
@@ -267,8 +294,9 @@ const DrawIOExport = {
         ip: n.data('ip') || '',
         platform: platform === 'Unknown' ? '' : platform,
         discovered: !!n.data('discovered'),
+        peerPlatform: n.data('peerPlatform') || '',
         vendor: viewer._detectVendor(platform, id),
-        role: viewer._detectDeviceRole(platform, id),
+        role: viewer._detectDeviceRole(n.data('discovered') ? platform : (n.data('peerPlatform') || ''), id),
       });
     });
 

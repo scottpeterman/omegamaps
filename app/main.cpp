@@ -5,6 +5,7 @@
 #include <QSettings>
 #include <QStyleFactory>
 
+#include "icons.h"
 #include "mainwindow.h"
 #include "runbridge.h"
 #include "theme.h"
@@ -41,13 +42,19 @@ int main(int argc, char **argv) {
     const QCommandLineOption themeOpt(QStringLiteral("theme"),
         QStringLiteral("cyber, dark or light (default: the last one used)"),
         QStringLiteral("name"));
-    cli.addOptions({mapOpt, speedOpt, themeOpt});
+    const QCommandLineOption iconsOpt(QStringLiteral("icons"),
+        QStringLiteral("cisco or line device icons (default: the last one used)"),
+        QStringLiteral("set"));
+    cli.addOptions({mapOpt, speedOpt, themeOpt, iconsOpt});
     cli.process(app);
 
     const QString theme = cli.isSet(themeOpt)
                               ? cli.value(themeOpt)
                               : QSettings().value(QStringLiteral("theme"), QStringLiteral("light")).toString();
     ThemeManager::instance().setTheme(themeFromKey(theme));
+    IconLibrary::instance().setIconSet(iconSetFromKey(
+        cli.isSet(iconsOpt) ? cli.value(iconsOpt)
+                            : QSettings().value(QStringLiteral("icons"), QStringLiteral("cisco")).toString()));
 
     MainWindow w;
     w.show();

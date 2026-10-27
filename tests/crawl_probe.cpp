@@ -57,6 +57,7 @@
 
 #include <omegamaps/vault.h>
 
+#include "icons.h"
 #include "crawlform.h"
 #include "discoverylog.h"
 #include "mainwindow.h"
@@ -449,8 +450,9 @@ int main(int argc, char **argv) {
         if (!af.open(QIODevice::ReadOnly)) check(false, QStringLiteral("could not open %1").arg(af.fileName()));
         const QStringList args = QString::fromUtf8(af.readAll()).split(QLatin1Char('\n'), Qt::SkipEmptyParts);
         const QStringList want{QStringLiteral("--theme"), themeKey(ThemeManager::instance().id()),
+                               QStringLiteral("--icons"), iconSetKey(IconLibrary::instance().iconSet()),
                                QFileInfo(dir + QStringLiteral("/formmaps/lab-form.json")).absoluteFilePath()};
-        check(args == want, QStringLiteral("View map starts the viewer on the run's map, in the theme: %1")
+        check(args == want, QStringLiteral("View map starts the viewer on the run's map, in the theme and icon set: %1")
                                 .arg(args.join(QLatin1Char(' '))));
         check(w.log()->plainText().contains(QStringLiteral("Opened lab-form.json in the map viewer")),
               QStringLiteral("and says so in the log, so a launch is never silent"));

@@ -204,7 +204,10 @@ func Generate(devices []*Device, opt Options) map[string]MapNode {
 			continue
 		}
 		node := MapNode{
-			NodeDetails: NodeDetails{IP: d.IPAddress, Platform: d.Platform},
+			// The display platform ("Arista DCS-7280SR3-48YC8 EOS") rather
+			// than the fingerprint token: the icon tables are written
+			// against model strings. See normalize/describe.go.
+			NodeDetails: NodeDetails{IP: d.IPAddress, Platform: normalize.DescribeOr(d.Platform, d.Version)},
 			Peers:       map[string]PeerEntry{},
 		}
 		for key, claims := range allClaims {

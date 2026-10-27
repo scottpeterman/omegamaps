@@ -241,7 +241,7 @@ func (c *Crawler) reportDone(identity string, d *topo.Device, m crawlrun.Method)
 	// every device that worked stays mid-flight and Finish sweeps it into a
 	// failure, which is the opposite of what happened.
 	c.cfg.Emit.Send(crawlrun.Event{Kind: crawlrun.KindReached,
-		Identity: identity, Name: d.SysName, Platform: d.Platform, Method: m})
+		Identity: identity, Name: d.SysName, Platform: normalize.DescribeOr(d.Platform, d.Version), Method: m})
 }
 
 // availableMethods is cfg.Methods with the default applied and anything

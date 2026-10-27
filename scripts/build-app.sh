@@ -205,6 +205,21 @@ fi
 
 say "toolchain: $(go version | awk '{print $3}'), cmake $(cmake --version | head -1 | awk '{print $3}')"
 
+# --- macOS SDK ---------------------------------------------------------------
+# A Command Line Tools update can install an SDK the linker cannot read
+# ("tapi error: malformed file") and make it the default. scripts/mac-sdk.sh
+# picks the newest SDK that actually links; SDKROOT carries it to the Go
+# archive step (cgo does not read CMake's setting) and CMAKE_OSX_SYSROOT to
+# the C++ side. An SDKROOT already set is used if it links.
+
+SDK_ARGS=()
+if [[ "$(uname -s)" == "Darwin" ]]; then
+    SDKROOT="$("$(dirname "${BASH_SOURCE[0]}")/mac-sdk.sh" -v)" || die "no usable macOS SDK (see above)"
+    export SDKROOT
+    SDK_ARGS=(-DCMAKE_OSX_SYSROOT="${SDKROOT}")
+    say "macOS SDK: ${SDKROOT}"
+fi
+
 # --- the cache ---------------------------------------------------------------
 # Kept only if it was configured against the Qt chosen now. build/bin, from
 # scripts/build.sh, lives in the same directory and is left alone.
@@ -214,8 +229,15 @@ drop_cache() {
     rm -f "${CACHE}"
     rm -rf "${BUILD_DIR}/CMakeFiles"
 }
+# A cache configured against another SDK carries compiler checks made with it,
+# and a failed one is never retried: the SDK has to match or the cache goes.
+cached_sdk=""
+[[ -f "${CACHE}" ]] && cached_sdk="$(sed -n 's/^CMAKE_OSX_SYSROOT:[A-Z]*=//p' "${CACHE}")"
 if [[ "${CLEAN}" -eq 1 && -f "${CACHE}" ]]; then
     say "dropping the CMake cache (--clean)"
+    drop_cache
+elif [[ -f "${CACHE}" && -n "${SDKROOT:-}" && "$(uname -s)" == "Darwin" && "${cached_sdk}" != "${SDKROOT}" ]]; then
+    say "dropping the CMake cache: configured against SDK ${cached_sdk:-(default)}, now ${SDKROOT}"
     drop_cache
 elif [[ -f "${CACHE}" ]]; then
     # Every Qt6*_DIR entry, not just Qt6_DIR: the cache holds one per module,
@@ -267,7 +289,7 @@ cmake -S . -B "${BUILD_DIR}" \
       -DCMAKE_BUILD_TYPE="${BUILD_TYPE}" \
       -DCMAKE_PREFIX_PATH="${QT_PREFIX}" \
       -DQt6_DIR="${QT_CMAKE_DIR}/Qt6" \
-      -DOMEGAMAPS_VERSION="${VERSION}" >/dev/null
+      -DOMEGAMAPS_VERSION="${VERSION}" ${SDK_ARGS[@]+"${SDK_ARGS[@]}"} >/dev/null
 STAMPED="$(cat "${BUILD_DIR}/app-version.txt" 2>/dev/null || echo unknown)"
 say "version ${STAMPED}"
 

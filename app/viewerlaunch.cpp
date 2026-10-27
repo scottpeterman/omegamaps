@@ -2,6 +2,8 @@
 
 #include "viewerlaunch.h"
 
+#include "icons.h"
+
 #include <QCoreApplication>
 #include <QDir>
 #include <QFileInfo>
@@ -135,7 +137,9 @@ bool launchViewer(const QString &mapPath, const QString &themeKey, QString *err,
         }
         return false;
     }
-    const QStringList args{QStringLiteral("--theme"), themeKey, QFileInfo(mapPath).absoluteFilePath()};
+    const QStringList args{QStringLiteral("--theme"), themeKey,
+                           QStringLiteral("--icons"), iconSetKey(IconLibrary::instance().iconSet()),
+                           QFileInfo(mapPath).absoluteFilePath()};
 #if defined(Q_OS_MACOS)
     const ViewerCommand cmd = viewerCommand(exe, args, true);
 #else

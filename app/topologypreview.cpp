@@ -64,6 +64,7 @@ public:
         m_row = row;
         if (iconChanged || m_iconKey.isEmpty()) {
             m_iconKey = IconLibrary::instance().keyFor(row.platform, row.display);
+            m_iconGen = IconLibrary::instance().generation();
             m_vendor = IconLibrary::instance().vendorColor(row.platform, row.display);
             m_label = shortLabel(row.display);
         }
@@ -122,17 +123,37 @@ public:
         if (m_highlight) {
             p->setPen(QPen(t.accent, 4));
             p->setBrush(Qt::NoBrush);
-            p->drawRoundedRect(ring.adjusted(-4, -4, 4, 4), 9, 9);
+            if (IconLibrary::instance().usingCiscoImages())
+                p->drawEllipse(ring.adjusted(-4, -4, 4, 4));
+            else
+                p->drawRoundedRect(ring.adjusted(-4, -4, 4, 4), 9, 9);
         }
 
+        // The icon set changed since this key was picked.
+        IconLibrary &lib = IconLibrary::instance();
+        if (m_iconGen != lib.generation()) {
+            m_iconKey = lib.keyFor(m_row.platform, m_row.display);
+            m_iconGen = lib.generation();
+        }
+
+        // The Cisco images are drawn on white and are not square: a white
+        // circle, as the map viewer draws them. The line drawings keep the
+        // tile in the theme's colour.
+        const bool cisco = lib.usingCiscoImages();
         p->setPen(ringPen);
-        p->setBrush(t.bgSecondary);
-        p->drawRoundedRect(ring, 7, 7);
+        if (cisco) {
+            p->setBrush(Qt::white);
+            p->drawEllipse(ring);
+        } else {
+            p->setBrush(t.bgSecondary);
+            p->drawRoundedRect(ring, 7, 7);
+        }
 
         const qreal scale = p->worldTransform().m11();
         const int px = std::clamp(int(std::ceil(kIcon * scale * 2)), 32, 160);
         p->setOpacity(iconOpacity);
-        p->drawPixmap(icon, IconLibrary::instance().pixmap(m_iconKey, px), QRectF(0, 0, px, px));
+        const QRectF iconRect = cisco ? icon.adjusted(2, 2, -2, -2) : icon;
+        p->drawPixmap(iconRect, lib.pixmap(m_iconKey, px), QRectF(0, 0, px, px));
         p->setOpacity(1.0);
 
         QFont f = p->font();
@@ -153,6 +174,7 @@ public:
 private:
     RunRow m_row;
     QString m_iconKey;
+    int m_iconGen = -1;
     QString m_label;
     QColor m_vendor;
     bool m_highlight = false;
@@ -517,6 +539,10 @@ void TopologyPreview::relayout() {
 
     m_scene->setSceneRect(m_scene->itemsBoundingRect().adjusted(-40, -40, 40, 40));
     if (!m_view->userMoved()) fit();
+}
+
+void TopologyPreview::refreshIcons() {
+    m_scene->update();
 }
 
 void TopologyPreview::fit() {

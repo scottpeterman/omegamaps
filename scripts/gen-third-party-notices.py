@@ -101,6 +101,22 @@ TEMPLATES_NOTE = {
     ),
 }
 
+# The device icon set the map view and the preview draw with when "Cisco
+# icons" is selected. Data, embedded the same way the templates are, so it is
+# declared beside them rather than with the JavaScript.
+ICONS_NOTE = (
+    "Embedded from `internal/mapweb/assets/icons/cisco/` via //go:embed and "
+    "compiled into the application's Qt resources. 22 images from Cisco's "
+    "network topology icon set, published by Cisco Systems, Inc. for use in "
+    "network diagrams (https://www.cisco.com/c/en/us/about/brand-center/"
+    "network-topology-icons.html), carried over unmodified from "
+    "securecartography2 together with the platform-to-icon table "
+    "`internal/mapweb/assets/platform_icon_map.json`. Cisco and the Cisco "
+    "logo are trademarks of Cisco Systems, Inc.; the icons are used to "
+    "depict network devices and imply no endorsement. They remain subject to "
+    "the terms Cisco publishes with the set, not to this project's GPLv3."
+)
+
 # Components that are not Go modules and have no readable licence file.
 # Reviewed by hand; see the module docstring.
 NATIVE = [
@@ -365,6 +381,7 @@ def main():
         out.write("## Embedded data\n\n")
         out.write("### TextFSM templates\n\n%s\n\n"
                   % TEMPLATES_NOTE[TEMPLATES_PROVENANCE])
+        out.write("### Cisco network topology icons\n\n%s\n\n" % ICONS_NOTE)
 
         out.write("## Go modules\n\n"
                   "Statically linked into the transport archive and into the "

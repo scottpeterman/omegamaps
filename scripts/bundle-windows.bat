@@ -429,6 +429,12 @@ if not exist "%STAGE%\platforms\qwindows.dll" (
     echo error: platforms\qwindows.dll missing; the package would not start 1>&2
     goto fail
 )
+REM The Cisco device icons are JPEG, read through QImage: without the jpeg
+REM image-format plugin the preview draws empty circles and says nothing.
+if not exist "%STAGE%\imageformats\qjpeg.dll" (
+    echo error: imageformats\qjpeg.dll missing; the Cisco icons would not load 1>&2
+    goto fail
+)
 if not exist "%STAGE%\Qt6Widgets.dll" (
     echo error: Qt6Widgets.dll missing; windeployqt did not do its job 1>&2
     goto fail

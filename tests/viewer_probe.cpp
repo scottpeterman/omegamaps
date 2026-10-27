@@ -6,7 +6,7 @@
 // kept on its own server.
 //
 //     QTWEBENGINE_DISABLE_SANDBOX=1 QT_QPA_PLATFORM=offscreen \
-//         ./build/tests/viewer_probe [map.json] [/tmp/omv]
+//         ./build/tests/viewer_probe [map.json] [/tmp/omv] [cisco|line]
 //
 // Without a map it uses the fake lab's (below). Grabs go to <prefix>-light,
 // -dark and -cyber.png. Exit status is the number of failed checks. The
@@ -353,6 +353,9 @@ int main(int argc, char **argv) {
     auto win = std::make_unique<ViewerWindow>();
     ViewerWindow &w = *win;
     w.setLayoutDir(layouts);
+    // Optional third argument: the icon set, "cisco" (the default) or "line".
+    const QString iconSet = argc > 3 ? QString::fromLocal8Bit(argv[3]) : QStringLiteral("cisco");
+    w.setIconSet(iconSet);
     w.resize(1280, 820);
     w.show();
 
@@ -366,6 +369,10 @@ int main(int argc, char **argv) {
     check(w.openMap(mapPath, &err), QStringLiteral("map opened %1").arg(err));
     check(waitReady(w), QStringLiteral("page reports ready"));
     QJsonObject st = status(w);
+    check(st.value(QStringLiteral("icon_set")).toString() == iconSet,
+          QStringLiteral("the page draws the icon set it was opened with: %1")
+              .arg(st.value(QStringLiteral("icon_set")).toString()));
+    check(st.value(QStringLiteral("icon_map")).toBool(), QStringLiteral("the Cisco icon table loaded"));
     const int nodes = st.value(QStringLiteral("nodes")).toInt();
     check(nodes > 0 && nodes == w.server().nodeCount(),
           QStringLiteral("page draws every node the server loaded: %1 of %2").arg(nodes).arg(w.server().nodeCount()));

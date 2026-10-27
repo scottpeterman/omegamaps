@@ -25,6 +25,7 @@
 #include "panel.h"
 #include "progresspanel.h"
 #include "runbridge.h"
+#include "icons.h"
 #include "theme.h"
 #include "topologypreview.h"
 #include "vault.h"
@@ -261,6 +262,21 @@ void MainWindow::buildHeader(QWidget *central) {
         if (i >= 0 && i != m_theme->currentIndex()) m_theme->setCurrentIndex(i);
     });
     row->addWidget(m_theme);
+
+    // The device icon set, for the preview here and for every viewer this
+    // window opens. Remembered with the theme.
+    auto *icons = new QComboBox(header);
+    icons->setToolTip(tr("Device icons"));
+    icons->addItem(tr("Cisco icons"), iconSetKey(IconSet::Cisco));
+    icons->addItem(tr("Line icons"), iconSetKey(IconSet::Line));
+    icons->setCurrentIndex(icons->findData(iconSetKey(IconLibrary::instance().iconSet())));
+    connect(icons, qOverload<int>(&QComboBox::currentIndexChanged), this, [this, icons](int i) {
+        const IconSet set = iconSetFromKey(icons->itemData(i).toString());
+        IconLibrary::instance().setIconSet(set);
+        QSettings().setValue(QStringLiteral("icons"), iconSetKey(set));
+        m_preview->refreshIcons();
+    });
+    row->addWidget(icons);
 
     static_cast<QVBoxLayout *>(central->layout())->addWidget(header);
 }

@@ -377,11 +377,46 @@
   async function loadPlatformMap() {
     try {
       var resp = await fetch('/assets/platform_map.json', { cache: 'no-store' });
-      if (!resp.ok) return;
-      viewer.loadPlatformMap(await resp.json());
+      if (resp.ok) viewer.loadPlatformMap(await resp.json());
     } catch (e) {
       console.warn('[map] no platform map; icons fall back to role detection');
     }
+    try {
+      var iconResp = await fetch('/assets/platform_icon_map.json', { cache: 'no-store' });
+      // As text: the pattern order is the file's, and only the text has it.
+      if (iconResp.ok) viewer.loadIconMap(await iconResp.text());
+    } catch (e) {
+      console.warn('[map] no icon map; the Cisco icon set falls back to line icons');
+    }
+  }
+
+  // ── Icon set ──────────────────────────────────────────────────
+
+  // 'cisco' or 'line'. A host window passes ?icons= the way it passes the
+  // theme; a browser keeps its own last choice. Read before takeToken, which
+  // rewrites the address bar.
+  var ICONS_KEY = 'omegamaps-map-icons';
+
+  function initialIconSet() {
+    var fromURL = new URLSearchParams(window.location.search).get('icons');
+    if (fromURL === 'cisco' || fromURL === 'line') {
+      try { sessionStorage.setItem(ICONS_KEY, fromURL); } catch (e) { /* private mode */ }
+      return fromURL;
+    }
+    var kept = '';
+    try { kept = sessionStorage.getItem(ICONS_KEY) || localStorage.getItem(ICONS_KEY) || ''; } catch (e) { kept = ''; }
+    return kept === 'line' ? 'line' : 'cisco';
+  }
+
+  function setIconSet(name, remember) {
+    name = name === 'line' ? 'line' : 'cisco';
+    el('iconSet').value = name;
+    viewer.setIconSet(name);
+    try {
+      sessionStorage.setItem(ICONS_KEY, name);
+      if (remember) localStorage.setItem(ICONS_KEY, name);
+    } catch (e) { /* private mode */ }
+    updateDeviceList();
   }
 
   async function loadMap() {
@@ -450,6 +485,18 @@
   // For a window that hosts this page (the Qt viewer): a theme change
   // without a reload, and one read of what the page is showing. A browser
   // never calls either.
+  // Select a device and frame it with its neighbours, `hops` links out, with
+  // `padding` pixels of room around them.
+  window.omegamapsFocus = function (id, hops, padding) {
+    return !!(viewer && viewer.focusNode(id, hops || 1, padding || 60));
+  };
+
+  window.omegamapsSetIconSet = function (name) {
+    if (!viewer) return false;
+    setIconSet(name, false);
+    return true;
+  };
+
   window.omegamapsSetTheme = function (theme) {
     if (!window.omegamapsApplyTheme || !window.omegamapsApplyTheme(theme)) return false;
     try { sessionStorage.setItem('omegamaps-map-theme', JSON.stringify(theme)); } catch (e) { /* private mode */ }
@@ -494,6 +541,8 @@
         var s = viewer ? viewer.getStats() : { total: 0, undiscovered: 0 };
         return { devices: s.total - s.undiscovered, leaves: s.undiscovered, links: cy ? cy.edges().length : 0 };
       })(),
+      icon_set: viewer ? viewer.iconSet : '',
+      icon_map: !!(viewer && viewer._iconMap),
       layout_store: layoutOnServer,
       layout_status: (el('layoutStatus') || {}).textContent || '',
       banner: el('banner').classList.contains('show') ? el('banner').textContent : '',
@@ -504,12 +553,18 @@
   // ── Init ──────────────────────────────────────────────────────
 
   async function init() {
+    var icons = initialIconSet();
     takeToken();
 
     viewer = new TopologyViewer('cy', {
       onNodeSelect: updateNodeDetail,
       onStatsUpdate: updateStats,
       onFilterUpdate: updateFilterInfo,
+      iconSet: icons,
+    });
+    el('iconSet').value = icons;
+    el('iconSet').addEventListener('change', function () {
+      setIconSet(el('iconSet').value, true);
     });
     viewer.init();
     await viewer.preloadIcons();

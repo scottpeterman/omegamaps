@@ -4,6 +4,7 @@
 
 #include "aboutdialog.h"
 #include "filedialogs.h"
+#include "icons.h"
 #include "pathprompt.h"
 
 #include <QAction>
@@ -158,6 +159,17 @@ void ViewerWindow::buildMenus() {
         connect(a, &QAction::triggered, this, [id] { ThemeManager::instance().setTheme(id); });
     }
 
+    QMenu *icons = view->addMenu(tr("&Icons"));
+    m_iconGroup = new QActionGroup(this);
+    for (IconSet set : {IconSet::Cisco, IconSet::Line}) {
+        QAction *a = icons->addAction(set == IconSet::Cisco ? tr("&Cisco icons") : tr("&Line icons"));
+        a->setCheckable(true);
+        a->setData(iconSetKey(set));
+        a->setChecked(iconSetKey(set) == m_iconSet);
+        m_iconGroup->addAction(a);
+        connect(a, &QAction::triggered, this, [this, set] { setIconSet(iconSetKey(set)); });
+    }
+
     QMenu *help = menuBar()->addMenu(tr("&Help"));
     QAction *about = help->addAction(tr("&About omegamaps"), this, [this] { AboutDialog::showFor(this); });
     about->setMenuRole(QAction::AboutRole);  // macOS: the application menu, where About belongs
@@ -196,6 +208,16 @@ QJsonObject ViewerWindow::pageTheme(const Tokens &t) {
         {QStringLiteral("bg"), hex(t.bgPrimary)},
     };
     return QJsonObject{{QStringLiteral("dark"), t.dark}, {QStringLiteral("vars"), vars}, {QStringLiteral("cy"), cy}};
+}
+
+void ViewerWindow::setIconSet(const QString &key) {
+    m_iconSet = iconSetKey(iconSetFromKey(key));
+    if (m_iconGroup) {
+        for (QAction *a : m_iconGroup->actions()) a->setChecked(a->data().toString() == m_iconSet);
+    }
+    if (!m_server.isOpen()) return;
+    m_view->page()->runJavaScript(
+        QStringLiteral("window.omegamapsSetIconSet && window.omegamapsSetIconSet('%1')").arg(m_iconSet));
 }
 
 void ViewerWindow::applyTheme() {
@@ -238,7 +260,8 @@ void ViewerWindow::showPage() {
     QUrl u = m_server.url();
     const QByteArray theme = QJsonDocument(pageTheme(ThemeManager::instance().tokens())).toJson(QJsonDocument::Compact);
     u.setQuery(u.query(QUrl::FullyEncoded) + QStringLiteral("&theme=") +
-                   QString::fromLatin1(QUrl::toPercentEncoding(QString::fromUtf8(theme))),
+                   QString::fromLatin1(QUrl::toPercentEncoding(QString::fromUtf8(theme))) +
+                   QStringLiteral("&icons=") + m_iconSet,
                QUrl::StrictMode);
     m_view->setUrl(u);
 }

@@ -4,8 +4,9 @@
 # same code; then the application itself.
 #
 # Qt 6.2 is the floor, as for omegassh: nothing here uses qt_standard_project_setup()
-# or the other 6.3+ helpers. Svg is for the device icons (QSvgRenderer, so the
-# bundle needs libQt6Svg and no image-format or icon-engine plugin).
+# or the other 6.3+ helpers. Svg is for the line device icons (QSvgRenderer).
+# The Cisco icon set is JPEG, read through QImage, so a bundle now needs Qt's
+# jpeg image-format plugin (imageformats/qjpeg) beside the platform plugin.
 
 find_package(Qt6 6.2 REQUIRED COMPONENTS Widgets Svg)
 

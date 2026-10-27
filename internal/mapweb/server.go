@@ -319,6 +319,7 @@ var contentTypes = map[string]string{
 	".json": "application/json",
 	".svg":  "image/svg+xml",
 	".png":  "image/png",
+	".jpg":  "image/jpeg",
 	".txt":  "text/plain; charset=utf-8",
 }
 

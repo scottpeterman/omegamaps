@@ -186,6 +186,33 @@ suspecting the page. The viewer's Go side reads `$HOME` as the process started
 -- Go copies the environment at load -- so a probe that wants its own layout
 directory sets it on the window (`setLayoutDir`), not with `qputenv`.
 
+A third argument picks the device icon set, `cisco` (the default) or `line`.
+The probe rewrites the map it is given (its reload check grows the file), so
+point it at a copy when the map matters.
+
+**icons_probe** checks the preview's icon choice with no window: every Cisco
+image decodes (which is also the check that Qt's jpeg image-format plugin is
+present), and a table of platform strings resolves to the same icons the map
+viewer picks.
+
+```bash
+QT_QPA_PLATFORM=offscreen ./build/tests/icons_probe
+```
+
+**demo screenshots** come from a synthetic two-datacenter network on
+`example.net` (`internal/demonet`): `cmd/demonet` crawls it with the real
+crawler -- only per-device SNMP collection is simulated -- and writes the
+recording and map; `tests/demo_shots` replays the recording through the window
+and opens the map in the viewer, grabbing each step in light and dark.
+
+```bash
+./scripts/demo-screenshots.sh /tmp/shots     # about a minute and a quarter
+```
+
+`DEMO_SHOTS_VIEWER_ONLY=1` skips the two replays when only the viewer shots are
+being worked on, and `DEMO_SHOTS_LAYOUT` picks another layout by its value in
+the page's list.
+
 **crawl_probe** runs a live crawl against the fake lab, and the sandbox can
 host it: root is the default user, and loopback aliases work where dummy
 interfaces do not.

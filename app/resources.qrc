@@ -2,6 +2,29 @@
 <RCC version="1.0">
   <qresource prefix="/omegamaps">
     <file alias="platform_map.json">../internal/mapweb/assets/platform_map.json</file>
+    <file alias="platform_icon_map.json">../internal/mapweb/assets/platform_icon_map.json</file>
+    <file alias="cisco/7500ars_(7513).jpg">../internal/mapweb/assets/icons/cisco/7500ars_(7513).jpg</file>
+    <file alias="cisco/Nexus_2000.jpg">../internal/mapweb/assets/icons/cisco/Nexus_2000.jpg</file>
+    <file alias="cisco/Nexus_5000.jpg">../internal/mapweb/assets/icons/cisco/Nexus_5000.jpg</file>
+    <file alias="cisco/Nexus_7000.jpg">../internal/mapweb/assets/icons/cisco/Nexus_7000.jpg</file>
+    <file alias="cisco/accesspoint.jpg">../internal/mapweb/assets/icons/cisco/accesspoint.jpg</file>
+    <file alias="cisco/ata.jpg">../internal/mapweb/assets/icons/cisco/ata.jpg</file>
+    <file alias="cisco/carrier_routing_system.jpg">../internal/mapweb/assets/icons/cisco/carrier_routing_system.jpg</file>
+    <file alias="cisco/firewall.jpg">../internal/mapweb/assets/icons/cisco/firewall.jpg</file>
+    <file alias="cisco/generic_processor.jpg">../internal/mapweb/assets/icons/cisco/generic_processor.jpg</file>
+    <file alias="cisco/ibm_tower.jpg">../internal/mapweb/assets/icons/cisco/ibm_tower.jpg</file>
+    <file alias="cisco/ip_phone.jpg">../internal/mapweb/assets/icons/cisco/ip_phone.jpg</file>
+    <file alias="cisco/layer_3_switch.jpg">../internal/mapweb/assets/icons/cisco/layer_3_switch.jpg</file>
+    <file alias="cisco/mulitswitch_device.jpg">../internal/mapweb/assets/icons/cisco/mulitswitch_device.jpg</file>
+    <file alias="cisco/pc.jpg">../internal/mapweb/assets/icons/cisco/pc.jpg</file>
+    <file alias="cisco/pix_firewall.jpg">../internal/mapweb/assets/icons/cisco/pix_firewall.jpg</file>
+    <file alias="cisco/router.jpg">../internal/mapweb/assets/icons/cisco/router.jpg</file>
+    <file alias="cisco/server_switch.jpg">../internal/mapweb/assets/icons/cisco/server_switch.jpg</file>
+    <file alias="cisco/sun_workstation.jpg">../internal/mapweb/assets/icons/cisco/sun_workstation.jpg</file>
+    <file alias="cisco/virtual_layer_switch.jpg">../internal/mapweb/assets/icons/cisco/virtual_layer_switch.jpg</file>
+    <file alias="cisco/voice_router.jpg">../internal/mapweb/assets/icons/cisco/voice_router.jpg</file>
+    <file alias="cisco/wlan_controller.jpg">../internal/mapweb/assets/icons/cisco/wlan_controller.jpg</file>
+    <file alias="cisco/workgroup_switch.jpg">../internal/mapweb/assets/icons/cisco/workgroup_switch.jpg</file>
     <file>icons/access-point.svg</file>
     <file>icons/chevron-down.svg</file>
     <file>icons/firewall.svg</file>

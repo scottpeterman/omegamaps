@@ -55,6 +55,12 @@ public:
     // Takes effect at the first openMap.
     void setLayoutDir(const QString &dir) { m_layoutDir = dir; }
 
+    // "cisco" or "line". Before openMap it decides the first paint; after,
+    // the page switches sets in place. Not saved: like the theme, the viewer
+    // follows the application's choice rather than keeping its own.
+    void setIconSet(const QString &key);
+    QString iconSet() const { return m_iconSet; }
+
     QString mapPath() const { return m_server.mapPath(); }
     const MapServer &server() const { return m_server; }
     QWebEngineView *view() const { return m_view; }
@@ -112,6 +118,8 @@ private:
     QWebEngineView *m_view = nullptr;
     QLabel *m_statusLabel = nullptr;
     QActionGroup *m_themeGroup = nullptr;
+    QActionGroup *m_iconGroup = nullptr;
+    QString m_iconSet = QStringLiteral("cisco");
     QList<QAction *> m_mapActions;  // enabled only while a map is shown
 
     QTimer m_poll;

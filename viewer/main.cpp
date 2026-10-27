@@ -18,6 +18,7 @@
 
 #include <omegamaps/omegamaps.h>
 
+#include "icons.h"
 #include "theme.h"
 #include "viewerwindow.h"
 
@@ -59,6 +60,9 @@ int main(int argc, char **argv) {
     const QCommandLineOption themeOpt(QStringLiteral("theme"),
         QStringLiteral("cyber, dark or light (default: the application's last choice)"), QStringLiteral("name"));
     cli.addOption(themeOpt);
+    const QCommandLineOption iconsOpt(QStringLiteral("icons"),
+        QStringLiteral("cisco or line device icons (default: the application's last choice)"), QStringLiteral("set"));
+    cli.addOption(iconsOpt);
     cli.process(app);
 
     // The application's settings, read-only: the viewer follows its theme
@@ -70,6 +74,10 @@ int main(int argc, char **argv) {
     ThemeManager::instance().setTheme(themeFromKey(theme));
 
     ViewerWindow w;
+    w.setIconSet(cli.isSet(iconsOpt)
+        ? cli.value(iconsOpt)
+        : QSettings(QStringLiteral("omegamaps"), QStringLiteral("omegamaps"))
+              .value(QStringLiteral("icons"), QStringLiteral("cisco")).toString());
     w.show();
     // Started by another program, the viewer is not the active application;
     // without this its window can open behind the one that started it.

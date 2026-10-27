@@ -51,6 +51,15 @@ class TopologyViewer {
     // viewer still picks an icon, just from the platform string alone.
     this._platformMap = null;
 
+    // The Cisco icon set's table (assets/platform_icon_map.json), carried
+    // over from securecartography2 with the 22 images it names. Without it
+    // the Cisco set falls back to the line icons.
+    this._iconMap = null;
+
+    // 'cisco' (the topology-icon images) or 'line' (the embedded drawings).
+    // A host sets it through omegamapsSetIconSet; a browser gets the default.
+    this.iconSet = options.iconSet === 'line' ? 'line' : 'cisco';
+
     // Filter state
     this.hideUndiscovered = true;
     this.hideLeafNodes = true;
@@ -279,21 +288,26 @@ class TopologyViewer {
     const selectColor = pal.select || (dark ? '#4c90f0' : '#2d72d2');
     const undiscColor = pal.undiscovered || (dark ? '#e55656' : '#c23030');
 
+    // The Cisco images are drawn on white and are not square, so they sit
+    // in a white circle the way securecartography2 draws them; the line
+    // icons keep their tile.
+    const cisco = this._usingCiscoIcons();
+
     return [
       {
         selector: 'node',
         style: {
-          'shape': 'round-rectangle',
+          'shape': cisco ? 'ellipse' : 'round-rectangle',
           // The tile behind the icon. It was 'transparent', which Cytoscape
           // reads as black at full background-opacity: invisible on the
           // dark canvas it was drawn on, a black block on a light one. The
           // label chip's colour keeps the dark look and suits the light.
-          'background-color': textBg,
+          'background-color': cisco ? '#ffffff' : textBg,
           'background-image': 'data(icon)',
           'background-fit': 'contain',
           'background-clip': 'node',
-          'background-width': '100%',
-          'background-height': '100%',
+          'background-width': cisco ? '78%' : '100%',
+          'background-height': cisco ? '78%' : '100%',
           'width': 50,
           'height': 50,
           'label': 'data(label)',
@@ -460,6 +474,7 @@ class TopologyViewer {
           ip: details.ip || '',
           platform: details.platform || 'Unknown',
           icon: this._getIconForPlatform(details.platform, deviceName),
+          peerPlatform: '',
           discovered: true,
           vendorColor: this._getVendorColor(details.platform, deviceName),
           vendorFill: this._getVendorFill(details.platform, deviceName),
@@ -479,7 +494,11 @@ class TopologyViewer {
               id: peerName,
               label: peerName + ' ⚠',
               ip: '', platform: 'Undiscovered',
-              icon: this._getCachedIcon('undiscovered'),
+              // What the neighbour said it is. The line set draws every
+              // undiscovered node alike; the Cisco set draws it as what it
+              // claims to be, and the dashed ring says it was never dialled.
+              peerPlatform: peerData.platform || '',
+              icon: this._getUndiscoveredIcon(peerData.platform || '', peerName),
               discovered: false,
               vendorColor: '#c23030',
               vendorFill: 'rgba(194,48,48,0.1)',
@@ -512,7 +531,72 @@ class TopologyViewer {
       }
     }
 
+    this._orientEdges(elements);
     return elements;
+  }
+
+  /**
+   * Point every edge away from the middle of the network.
+   *
+   * The hierarchical layouts rank nodes by edge direction, and a map.json has
+   * none: an edge's source is whichever device happened to be read first. So
+   * dagre ranked an access switch above the core as often as below it, and a
+   * fabric came out as a wide, crossed band. Each connected piece of the map is
+   * walked breadth-first from its centre -- the node with the smallest
+   * eccentricity, ties to the most links, then by name -- and each edge is
+   * pointed from the nearer node to the further one. The core lands on top
+   * because it is the middle, not because it is called core.
+   *
+   * O(V*E) for the centres, which is a fraction of a second at a thousand
+   * devices. Edge ids are unchanged (they are the sorted pair), so saved
+   * layouts and selections are unaffected.
+   */
+  _orientEdges(elements) {
+    const adj = new Map();
+    const edges = elements.filter(e => e.group === 'edges');
+    for (const e of elements) if (e.group === 'nodes') adj.set(e.data.id, []);
+    for (const e of edges) {
+      adj.get(e.data.source).push(e.data.target);
+      adj.get(e.data.target).push(e.data.source);
+    }
+
+    const bfs = (root) => {
+      const dist = new Map([[root, 0]]);
+      const queue = [root];
+      for (let i = 0; i < queue.length; i++) {
+        const d = dist.get(queue[i]);
+        for (const nb of adj.get(queue[i])) {
+          if (!dist.has(nb)) { dist.set(nb, d + 1); queue.push(nb); }
+        }
+      }
+      return dist;
+    };
+
+    const level = new Map();
+    const ids = [...adj.keys()].sort();
+    for (const start of ids) {
+      if (level.has(start)) continue;
+      const component = [...bfs(start).keys()];
+      let best = null, bestEcc = Infinity;
+      for (const id of component) {
+        let ecc = 0;
+        for (const d of bfs(id).values()) if (d > ecc) ecc = d;
+        const deg = adj.get(id).length;
+        if (ecc < bestEcc || (ecc === bestEcc && deg > adj.get(best).length) ||
+            (ecc === bestEcc && deg === adj.get(best).length && id < best)) {
+          best = id; bestEcc = ecc;
+        }
+      }
+      for (const [id, d] of bfs(best)) level.set(id, d);
+    }
+
+    for (const e of edges) {
+      if (level.get(e.data.source) > level.get(e.data.target)) {
+        const t = e.data.source;
+        e.data.source = e.data.target;
+        e.data.target = t;
+      }
+    }
   }
 
 
@@ -616,10 +700,119 @@ class TopologyViewer {
     return map[role] || 'layer-3-switch';
   }
 
-  /** Pre-rasterized PNG data URI for a platform/hostname combo. */
+  // ── Cisco icon set ──────────────────────────────────────────────
+  //
+  // A port of securecartography2's PlatformIconManager.get_icon_for_platform.
+  // Tier 1 takes the FIRST pattern in the file that matches, case-
+  // insensitively: the table is written specific-first (C9300, DCS-7280,
+  // MX960) and generic-last (IOS-XE, JUNOS, Arista), and that order is the
+  // meaning -- "Cisco C9300-48P IOS-XE" is a switch because C9300 comes before
+  // IOS-XE. JSON.parse does not keep file order for keys that look like
+  // integers ("7200", "7206"), so the order is read from the text itself.
+  // app/icons.cpp does the same.
+
+  loadIconMap(data) {
+    const text = typeof data === 'string' ? data : JSON.stringify(data);
+    const m = JSON.parse(text);
+    if (!m || !m.platform_patterns || !m.defaults) return;
+    this._iconMap = m;
+    this._iconPatterns = TopologyViewer._keysInFileOrder(text, 'platform_patterns')
+      .filter(k => !k.startsWith('_') && typeof m.platform_patterns[k] === 'string')
+      .map(k => [k.toLowerCase(), m.platform_patterns[k]]);
+    console.log(`[map] icon map: ${this._iconPatterns.length} platform patterns`);
+  }
+
+  // The keys of a flat string->string object, in the order the text has them.
+  static _keysInFileOrder(text, section) {
+    const at = text.indexOf('"' + section + '"');
+    if (at < 0) return [];
+    const open = text.indexOf('{', at);
+    const close = text.indexOf('}', open);
+    if (open < 0 || close < 0) return [];
+    const keys = [];
+    const re = /"((?:[^"\\]|\\.)*)"\s*:/g;
+    const body = text.slice(open + 1, close);
+    let mm;
+    while ((mm = re.exec(body)) !== null) keys.push(JSON.parse('"' + mm[1] + '"'));
+    return keys;
+  }
+
+  _usingCiscoIcons() {
+    return this.iconSet === 'cisco' && !!this._iconMap;
+  }
+
+  _defaultIconFile(kind) {
+    const d = this._iconMap.defaults;
+    return d['default_' + kind] || d.default_unknown;
+  }
+
+  /** platform + hostname -> icon file name in assets/icons/cisco/. */
+  _resolveCiscoIconFile(platform, nodeId) {
+    if (!platform) return this._defaultIconFile('unknown');
+    const p = platform.toLowerCase();
+    const n = (nodeId || '').toLowerCase();
+
+    for (const [pattern, file] of this._iconPatterns) {
+      if (p.includes(pattern)) return file;
+    }
+
+    for (const [category, config] of Object.entries(this._iconMap.fallback_patterns || {})) {
+      const key = config.icon || ('default_' + category);
+      if ((config.platform_patterns || []).some(x => p.includes(x.toLowerCase()))) {
+        return this._iconMap.defaults[key] || this._defaultIconFile('unknown');
+      }
+      if (n && (config.name_patterns || []).some(x => n.includes(x.toLowerCase()))) {
+        return this._iconMap.defaults[key] || this._defaultIconFile('unknown');
+      }
+    }
+
+    const has = (words) => words.some(w => p.includes(w));
+    if (has(['switch', 'nexus', 'catalyst', 'c9', 'ws-c', 'dcs', 'qfx', 'ex'])) return this._defaultIconFile('switch');
+    if (has(['router', 'isr', 'asr', 'csr', 'mx'])) return this._defaultIconFile('router');
+    if (has(['firewall', 'asa', 'ftd', 'palo', 'srx'])) return this._defaultIconFile('firewall');
+    if (has(['wireless', 'ap', 'wlc', 'aironet'])) return this._defaultIconFile('wireless');
+    if (has(['phone', 'sep'])) return this._defaultIconFile('phone');
+    if (has(['ata', 'vg'])) return this._defaultIconFile('ata');
+    if (has(['linux', 'debian', 'ubuntu', 'centos', 'server'])) return this._defaultIconFile('endpoint');
+    return this._defaultIconFile('unknown');
+  }
+
+  _ciscoIconUrl(file) {
+    return '/assets/icons/cisco/' + encodeURIComponent(file);
+  }
+
+  _getUndiscoveredIcon(peerPlatform, nodeId) {
+    if (this._usingCiscoIcons()) {
+      return this._ciscoIconUrl(this._resolveCiscoIconFile(peerPlatform, nodeId));
+    }
+    return this._getCachedIcon('undiscovered');
+  }
+
+  /**
+   * Switch icon sets on a loaded map without a reload or a relayout: every
+   * node's icon is recomputed from the data it already carries.
+   */
+  setIconSet(name) {
+    this.iconSet = name === 'line' ? 'line' : 'cisco';
+    if (!this.cy) return;
+    this.cy.batch(() => {
+      this.cy.nodes().forEach(n => {
+        const d = n.data();
+        n.data('icon', d.discovered
+          ? this._getIconForPlatform(d.platform, d.id)
+          : this._getUndiscoveredIcon(d.peerPlatform, d.id));
+      });
+    });
+    this.restyle();
+  }
+
+  /** Icon for a platform/hostname combo: an image URL or a PNG data URI. */
   _getIconForPlatform(platform, nodeId) {
     if (!platform || platform === 'Undiscovered') {
-      return this._getCachedIcon('undiscovered');
+      return this._getUndiscoveredIcon('', nodeId);
+    }
+    if (this._usingCiscoIcons()) {
+      return this._ciscoIconUrl(this._resolveCiscoIconFile(platform, nodeId));
     }
 
     const key = this._platformMap
@@ -690,8 +883,17 @@ class TopologyViewer {
   // ═══════════════════════════════════════════════════════════════
 
   fitView() { if (this.cy) this.cy.fit(this.cy.elements(':visible'), 30); }
-  zoomIn() { if (this.cy) this.cy.zoom(this.cy.zoom() * 1.2); }
-  zoomOut() { if (this.cy) this.cy.zoom(this.cy.zoom() * 0.8); }
+  // About the middle of the view. cy.zoom(level) alone zooms about the
+  // model origin, so the + and - buttons slid the map off to one side.
+  _zoomBy(f) {
+    if (!this.cy) return;
+    this.cy.zoom({
+      level: this.cy.zoom() * f,
+      renderedPosition: { x: this.cy.width() / 2, y: this.cy.height() / 2 },
+    });
+  }
+  zoomIn() { this._zoomBy(1.2); }
+  zoomOut() { this._zoomBy(0.8); }
 
 
   // ═══════════════════════════════════════════════════════════════
@@ -804,6 +1006,26 @@ class TopologyViewer {
       vendor: this._detectVendor(n.data('platform'), n.id()),
       discovered: n.data('discovered'),
     })).sort((a, b) => a.label.localeCompare(b.label));
+  }
+
+  /**
+   * Select a node and frame it with everything within `hops` links of it
+   * that is visible -- the view a person zooms to by hand when looking at one
+   * device in its surroundings. `padding` (pixels) widens the frame to take in
+   * what sits beside that area. Returns false when the node is not shown.
+   */
+  focusNode(nodeId, hops = 1, padding = 60) {
+    if (!this.cy) return false;
+    const node = this.cy.getElementById(nodeId);
+    if (!node.length || !node.visible()) return false;
+    let area = node;
+    for (let i = 0; i < hops; i++) area = area.closedNeighborhood();
+    this.cy.nodes().unselect();
+    node.select();
+    this.selectedNode = nodeId;
+    this.cy.fit(area.filter(':visible'), padding);
+    if (this.onNodeSelect) this.onNodeSelect(node.data());
+    return true;
   }
 
   selectNode(nodeId) {
