@@ -1,0 +1,7 @@
+// viewer/omegamaps-viewer.rc
+//
+// Same icon as omegamaps.exe, compiled into omegamaps-viewer.exe. The viewer
+// is its own process with its own taskbar button, and without this it shows
+// the generic exe icon there. See app/omegamaps.rc.
+
+IDI_ICON1 ICON "../art/omegamaps.ico"

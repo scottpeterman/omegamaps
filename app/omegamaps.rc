@@ -1,0 +1,12 @@
+// app/omegamaps.rc
+//
+// The icon Explorer, shortcuts, Alt+Tab and the taskbar show for
+// omegamaps.exe before Qt is running. setWindowIcon() in main.cpp only covers
+// the window once it exists; the file itself has no icon unless one is
+// compiled in here.
+//
+// The first ICON resource in the file is the one Windows uses for the exe, so
+// this stays first. The path is relative to this file. Regenerate the .ico
+// with art/make-icons.py.
+
+IDI_ICON1 ICON "../art/omegamaps.ico"

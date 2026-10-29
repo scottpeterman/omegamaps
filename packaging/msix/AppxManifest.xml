@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- packaging/msix/AppxManifest.xml
+
+     The MSIX manifest. scripts\bundle-windows-msix.bat copies this beside the
+     staged application (dist\omegamaps) and packs the result.
+
+     FOR THE STORE, Identity Name and Publisher, and PublisherDisplayName, must
+     be the values Partner Center shows for this app (Product management ->
+     Product identity). Upload is refused if they differ. For a self-signed
+     sideload test, Publisher must instead equal the signing certificate's
+     subject exactly; bundle-windows-msix.bat defaults both to CN=Scott Peterman.
+
+     Version must be four parts, and the Store requires the last one to be 0.
+-->
+<Package
+  xmlns="http://schemas.microsoft.com/appx/manifest/foundation/windows10"
+  xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
+  xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
+  IgnorableNamespaces="uap rescap">
+
+  <Identity
+    Name="ScottPeterman.OmegaMaps"
+    Publisher="CN=Scott Peterman"
+    Version="0.1.4.0"
+    ProcessorArchitecture="x64" />
+
+  <Properties>
+    <DisplayName>OmegaMaps</DisplayName>
+    <PublisherDisplayName>Scott Peterman</PublisherDisplayName>
+    <Logo>Assets\StoreLogo.png</Logo>
+  </Properties>
+
+  <Dependencies>
+    <TargetDeviceFamily
+      Name="Windows.Desktop"
+      MinVersion="10.0.19041.0"
+      MaxVersionTested="10.0.22621.0" />
+  </Dependencies>
+
+  <Resources>
+    <Resource Language="en-us" />
+  </Resources>
+
+  <Capabilities>
+    <!-- Full-trust Win32: filesystem, network, the user's profile. Restricted
+         capability; the Store asks for a one-line justification. -->
+    <rescap:Capability Name="runFullTrust" />
+  </Capabilities>
+
+  <Applications>
+    <!-- One entry. omegamaps-viewer.exe is launched by omegamaps.exe from its
+         own directory and needs no Start menu tile of its own. -->
+    <Application
+      Id="OmegaMaps"
+      Executable="omegamaps.exe"
+      EntryPoint="Windows.FullTrustApplication">
+      <uap:VisualElements
+        DisplayName="OmegaMaps"
+        Description="Network topology discovery and mapping: CDP/LLDP crawl over SSH, an interactive map viewer and an encrypted credential vault."
+        BackgroundColor="transparent"
+        Square150x150Logo="Assets\Square150x150Logo.png"
+        Square44x44Logo="Assets\Square44x44Logo.png">
+        <uap:DefaultTile
+          Wide310x150Logo="Assets\Wide310x150Logo.png"
+          Square71x71Logo="Assets\Square71x71Logo.png"
+          Square310x310Logo="Assets\Square310x310Logo.png" />
+      </uap:VisualElements>
+    </Application>
+  </Applications>
+</Package>
