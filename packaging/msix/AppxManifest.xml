@@ -21,7 +21,7 @@
   <Identity
     Name="ScottPeterman.OmegaMaps"
     Publisher="CN=Scott Peterman"
-    Version="0.1.4.0"
+    Version="0.1.5.0"
     ProcessorArchitecture="x64" />
 
   <Properties>

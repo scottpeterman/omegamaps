@@ -11,7 +11,7 @@
 # configure step -- see docs/BUILDING.md.
 
 cmake_minimum_required(VERSION 3.19)
-project(omegamaps VERSION 0.1.4 LANGUAGES C CXX)
+project(omegamaps VERSION 0.1.5 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
