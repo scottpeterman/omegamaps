@@ -37,3 +37,10 @@ target_link_libraries(omegamaps_ui PUBLIC Qt6::Widgets Qt6::Svg omegamaps::c)
 
 add_executable(omegamaps WIN32 MACOSX_BUNDLE main.cpp)
 target_link_libraries(omegamaps PRIVATE omegamaps_ui)
+
+# The exe's own icon, compiled in as a resource. Without it Explorer, shortcuts
+# and the MSIX-installed Start entry show the generic exe icon, whatever
+# setWindowIcon() does at runtime. See omegamaps.rc.
+if(WIN32)
+    target_sources(omegamaps PRIVATE omegamaps.rc)
+endif()

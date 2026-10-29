@@ -19,6 +19,9 @@ target_link_libraries(omegamaps_viewer PUBLIC omegamaps_ui Qt6::WebEngineWidgets
 
 add_executable(omegamaps-viewer WIN32 MACOSX_BUNDLE main.cpp)
 target_link_libraries(omegamaps-viewer PRIVATE omegamaps_viewer)
+if(WIN32)
+    target_sources(omegamaps-viewer PRIVATE omegamaps-viewer.rc)
+endif()
 set_target_properties(omegamaps-viewer PROPERTIES
     RUNTIME_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/app"
     MACOSX_BUNDLE_BUNDLE_NAME "omegamaps viewer"

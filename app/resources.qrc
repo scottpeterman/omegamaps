@@ -35,5 +35,6 @@
     <file>icons/undiscovered.svg</file>
     <file>icons/workgroup-switch.svg</file>
     <file>splash.png</file>
+    <file alias="icon.png">../art/omegamaps-icon-256.png</file>
   </qresource>
 </RCC>

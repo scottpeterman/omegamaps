@@ -10,6 +10,7 @@
 
 #include <QApplication>
 #include <QCommandLineParser>
+#include <QIcon>
 #include <QFileInfo>
 #include <QMessageBox>
 #include <QSettings>
@@ -45,6 +46,12 @@ int main(int argc, char **argv) {
     QApplication::setApplicationDisplayName(QStringLiteral("omegamaps map viewer"));
     QApplication::setApplicationVersion(libraryVersion());
     QApplication::setStyle(QStyleFactory::create(QStringLiteral("Fusion")));
+
+    // Title bar and task switcher on Linux and Windows. macOS ignores this and
+    // takes the bundle icon instead. From the compiled-in resource, so it is
+    // the same in a checkout and in a package.
+    initResources();
+    QApplication::setWindowIcon(QIcon(QStringLiteral(":/omegamaps/icon.png")));
 
     // OMEGAMAPS_QT_DIALOGS=1: Qt's own file dialogs instead of the
     // platform's. For a platform dialog that fails to appear -- which returns
